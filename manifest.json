@@ -1,0 +1,24 @@
+{
+  "name": "Zêluz DayCare Monitor",
+  "short_name": "Zêluz DC",
+  "description": "Monitor de rotinas do DayCare Zêluz",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FAF8F4",
+  "theme_color": "#234D67",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
