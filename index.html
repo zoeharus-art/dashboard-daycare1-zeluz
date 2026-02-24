@@ -1359,23 +1359,26 @@ function parseGviz(table) {
       let val='';
       if(cell&&cell.v!=null){
         if(typeof cell.v==='string'&&cell.v.startsWith('Date(')){
-          if(cell.f!=null){
-            val=String(cell.f);
-          } else {
-            const p=cell.v.match(/Date\((-?\d+),(\d+),(\d+)(?:,(\d+),(\d+(?:\.\d+)?))?/);
-            if(p){
-              const yr=+p[1],mo=+p[2],dy=+p[3];
-              if(p[4]!=null){
-                const hr=+p[4],mn=Math.round(+p[5]);
-                val=(yr===1899&&mo===11&&dy===30)
-                  ?`${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')}`
-                  :`${String(dy).padStart(2,'0')}/${String(mo+1).padStart(2,'0')}/${yr}`;
-              } else {
-                val=`${String(dy).padStart(2,'0')}/${String(mo+1).padStart(2,'0')}/${yr}`;
-              }
-            } else { val=String(cell.v); }
-          }
-        } else { val=cell.f!=null?String(cell.f):String(cell.v); }
+          const p=cell.v.match(/Date\((-?\d+),(\d+),(\d+)(?:,(\d+),(\d+(?:\.\d+)?))?/);
+          if(p){
+            const yr=+p[1],mo=+p[2],dy=+p[3];
+            if(p[4]!=null&&yr===1899&&mo===11&&dy===30){
+              // Hora pura — sempre HH:MM do valor bruto (ignora cell.f que pode vir "10h")
+              const hr=+p[4],mn=Math.round(+p[5]);
+              val=`${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
+            } else {
+              // Data (com ou sem hora)
+              val=cell.f!=null?String(cell.f):`${String(dy).padStart(2,'0')}/${String(mo+1).padStart(2,'0')}/${yr}`;
+            }
+          } else { val=cell.f!=null?String(cell.f):String(cell.v); }
+        } else {
+          val=cell.f!=null?String(cell.f):String(cell.v);
+          // Normaliza hora digitada como texto: "10h05"→"10:05" / "10h"→"10:00"
+          val=val.replace(/^(\d{1,2})h(\d{1,2})$/i,
+                (_,h,m)=>`${String(+h).padStart(2,'0')}:${String(+m).padStart(2,'0')}`)
+               .replace(/^(\d{1,2})h$/i,
+                (_,h)=>`${String(+h).padStart(2,'0')}:00`);
+        }
       }
       obj[key]=val;
       // Guarda também sob chave sem acento (garante busca independente de encoding)
