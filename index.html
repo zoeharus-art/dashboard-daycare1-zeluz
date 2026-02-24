@@ -2,6 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Zêluz DC">
+  <meta name="theme-color" content="#234D67">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="logo.png">
   <title>Zêluz® — Monitor DayCare</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
   <style>
@@ -53,7 +61,7 @@
     }
 
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-    html, body { height:100%; font-family:var(--font); background:var(--creme); }
+    html, body { height:100%; font-family:var(--font); background:var(--creme); overflow-x:hidden; }
     body { display:flex; flex-direction:column; min-height:100vh; }
 
     /* ════ ANIMAÇÕES ════ */
@@ -555,6 +563,66 @@
     }
     .footer-txt   { font-size:11px; color:rgba(255,255,255,.5); font-weight:600; }
     .footer-brand { font-size:12px; color:#F0C840; font-weight:700; letter-spacing:.4px; }
+
+    /* ════ RESPONSIVO — TABLET ════ */
+    @media (max-width: 960px) {
+      .geral-grid  { grid-template-columns: repeat(2, 1fr); }
+      .blocks-grid { grid-template-columns: repeat(2, 1fr); }
+      .date-nav .label { min-width: 180px; font-size: 13px; }
+    }
+
+    /* ════ RESPONSIVO — CELULAR ════ */
+    @media (max-width: 600px) {
+      /* Header */
+      .header-top  { flex-direction: column; align-items: center; padding: 10px 12px; gap: 4px; }
+      .logo-wrap   { height: 72px; }
+      .logo-img    { height: 160px; margin-top: -40px; }
+      .clock-area  { text-align: center; }
+      .clock-dia, .clock-data { text-align: center; }
+      .clock-hora  { font-size: 34px; letter-spacing: -2px; }
+
+      /* Frase */
+      .frase-strip { padding: 8px 12px; }
+      .frase-texto { font-size: 14px; }
+      .frase-label { font-size: 10px; letter-spacing: 2px; }
+
+      /* Tabs */
+      .tabs-bar { padding: 0 4px; }
+      .tab-btn  { padding: 6px 12px; font-size: 12px; }
+
+      /* Barra azul — 2 linhas: navegação de data em cima, botão Atualizar embaixo */
+      .status-bar  { flex-direction: column; align-items: stretch; padding: 8px 12px; gap: 6px; }
+      .status-left { justify-content: center; }
+      .date-nav    { width: 100%; justify-content: center; }
+      .date-nav .label { min-width: 0; flex: 1; font-size: 11px; text-align: center; }
+      .date-nav button { padding: 5px 10px; font-size: 11px; white-space: nowrap; }
+      /* Esconde botões secundários no celular — aparecem só no PC/tablet */
+      .btn-diag    { display: none; }
+      .status-timer { display: none; }
+      .status-right { justify-content: center; }
+      .btn-refresh { padding: 8px 0; font-size: 13px; width: 100%; border-radius: 10px; }
+
+      /* Conteúdo */
+      .main        { padding: 10px 8px; }
+      .geral-grid  { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .blocks-grid { grid-template-columns: 1fr; gap: 10px; }
+      .geral-count { font-size: 44px; }
+      .geral-card  { padding: 16px 10px 14px; }
+      .block-body  { max-height: 200px; }
+      .entry-name  { font-size: 13px; }
+      .entry-time  { font-size: 12px; }
+
+      /* Alarme */
+      .alarm-title { font-size: 32px; }
+      .alarm-icon  { font-size: 60px; }
+      .alarm-nome  { font-size: 26px; }
+      .alarm-msg   { font-size: 17px; margin-bottom: 20px; }
+      .alarm-btn   { font-size: 16px; padding: 12px 28px; }
+
+      /* Footer */
+      .footer { padding: 8px 12px; }
+      .footer-txt, .footer-brand { font-size: 10px; }
+    }
   </style>
 </head>
 <body>
