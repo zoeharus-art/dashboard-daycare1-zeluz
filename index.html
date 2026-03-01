@@ -735,7 +735,7 @@
 <!-- ════ FOOTER ════ -->
 <footer class="footer">
   <div class="footer-txt">🐾 Zêluz® — Belo Horizonte · zeluz.com.br</div>
-  <div class="footer-brand">Kairós® — By Adriana Duarte .'.</div>
+  <div class="footer-brand">∞ Inteligência Criativa — By Adriana Duarte .´.</div>
   <div class="footer-txt">Dados salvos no navegador · Atualização: 2 min</div>
 </footer>
 
@@ -747,18 +747,16 @@ const SHEET_ID   = '1sYJfssdMiUGkyeUX2EUUVpSjpE80kETDT6Gktnqd9kA';
 const REFRESH_OK = 120;
 const REFRESH_ER = 30;
 const CACHE_KEY  = 'zeluz_dc_v3';
-const SHEET_FETCH_TIMEOUT_MS = 8000;
-const SHEET_PROBE_CONCURRENCY = 4;
 const TODO_KEY   = 'zeluz_todo_v1';
 const ALARM_KEY  = 'zeluz_alarm_v1';
 
 // ─── Fontes de alarme: tudo que tem horário ───────────────
 // parseFromValue:true → o horário está embutido no próprio valor da coluna ("Kako 17:10")
 const ALARM_SOURCES = [
-  { nomeCols:['Banho'],                    horaCols:['Hora Banho', 'Horário Banho', 'Horario Banho', 'Hora do Banho'], icon:'🛁', msg:'Prepare para o banho das' },
-  { nomeCols:['Veterinário', 'Veterinario', 'Consulta Veterinária', 'Consulta Veterinario'], horaCols:['Hora Veterinário', 'Hora Veterinario', 'Horário Veterinário', 'Horario Veterinario', 'Hora Vet'], icon:'🩺', msg:'Consulta veterinária às'  },
-  { nomeCols:['Avaliação', 'Avaliacao'],   horaCols:['Hora Avaliação', 'Hora Avaliacao', 'Horário', 'Horario'], icon:'📋', msg:'Avaliação às' },
-  { nomeCols:['Peludinho que sairá cedo', 'Peludinho que saíra cedo', 'Peludinho que sairá mais cedo', 'Saída Cedo', 'Saida Cedo'], horaCols:['Hora Saída Cedo', 'Hora Saida Cedo', 'Horário Saída Cedo', 'Horario Saida Cedo', 'Hora Saída', 'Hora Saida'], icon:'🚶', msg:'sai cedo às' },
+  { nomeCol:'Banho',                    horaCol:'Hora Banho',       icon:'🛁', msg:'Prepare para o banho das' },
+  { nomeCol:'Veterinário',              horaCol:'Hora Veterinário', icon:'🩺', msg:'Consulta veterinária às'  },
+  { nomeCol:'Avaliação',               horaCol:'Hora Avaliação',  icon:'📋', msg:'Avaliação às'   },
+  { nomeCol:'Peludinho que saira cedo', horaCol:'Hora Saida Cedo', icon:'🚶', msg:'sai cedo às'    },
 ];
 const TZ         = 'America/Sao_Paulo';
 
@@ -1089,485 +1087,100 @@ const FRASES = [
 // ════════════════════════════════════════════════════════════
 //  DEFINIÇÃO DOS BLOCOS
 // ════════════════════════════════════════════════════════════
-const PRIMARY_NAME_COLUMNS = ['Aulunos', 'Alunos', 'Aluno', 'Nome', 'Nomes', 'Peludinho', 'Peludinhos', 'Matriculados'];
+const BLOCKS = [
+  // ══ Ordem operacional ══════════════════════════════════
+  { id:'restricao', title:'Hóspedes com Restrições',     icon:'🏠⚠️', color:'alerta',
+    fn: rows => rows.filter(r=>has(r,'Hóspedes com Restrições')).map(r=>({
+      name: v(r,'Hóspedes com Restrições'), time: ''
+    })) },
 
-function makeBlock(config) {
-  const block = {
-    ...config,
-    cols: [...new Set((config.cols || []).filter(Boolean))],
-    timeCols: [...new Set((config.timeCols || []).filter(Boolean))],
-    useNameOr: config.useNameOr !== false,
-  };
-  block.fn = rows => buildEntriesFromColumns(rows, block.cols, block.timeCols, { useNameOr: block.useNameOr });
-  return block;
-}
+  { id:'banho',     title:'Banho',                        icon:'🛁', color:'banho',   special:'banho',
+    fn: rows => rows.filter(r=>has(r,'Banho')).map(r=>({ name:v(r,'Banho'), time:v(r,'Hora Banho') })) },
 
-const BASE_BLOCKS = [
-  makeBlock({
-    id:'restricao',
-    title:'Hóspedes com Restrições',
-    icon:'🏠⚠️',
-    color:'alerta',
-    cols:['Hóspedes com Restrições', 'Hospedes com Restricoes', 'Hóspedes com Restrição', 'Hospedes com Restricao'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'banho',
-    title:'Banho',
-    icon:'🛁',
-    color:'banho',
-    special:'banho',
-    cols:['Banho'],
-    timeCols:['Hora Banho', 'Horário Banho', 'Horario Banho', 'Hora do Banho'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'vet',
-    title:'Veterinário',
-    icon:'🩺',
-    color:'vet',
-    special:'banho',
-    cols:['Veterinário', 'Veterinario', 'Consulta Veterinária', 'Consulta Veterinario'],
-    timeCols:['Hora Veterinário', 'Hora Veterinario', 'Horário Veterinário', 'Horario Veterinario', 'Hora Vet'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'saindo',
-    title:'Peludinho que Sairá Cedo',
-    icon:'🚶',
-    color:'amarelo',
-    cols:['Peludinho que sairá cedo', 'Peludinho que saíra cedo', 'Peludinho que sairá mais cedo', 'Saída Cedo', 'Saida Cedo'],
-    timeCols:['Hora Saída Cedo', 'Hora Saida Cedo', 'Horário Saída Cedo', 'Horario Saida Cedo', 'Hora Saída', 'Hora Saida'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'vermifugo',
-    title:'Vermífugo',
-    icon:'💊',
-    color:'vet',
-    cols:['Vermífugo', 'Vermifugo'],
-  }),
-  makeBlock({
-    id:'carrap',
-    title:'Carrapaticida',
-    icon:'🔬',
-    color:'vet',
-    cols:['Carrapaticida'],
-  }),
-  makeBlock({
-    id:'coleira',
-    title:'Troca de Coleira',
-    icon:'🏷️',
-    color:'vet',
-    cols:['Troca de Coleira'],
-  }),
-  makeBlock({
-    id:'hidrat',
-    title:'Hidratação Patinha e Focinho',
-    icon:'💧',
-    color:'banho',
-    cols:['Hidratação patinha e Focinho', 'Hidratacao patinha e Focinho', 'Hidratação Patinha e Focinho', 'Hidratacao Patinha e Focinho', 'Hidratação de Patinha e Focinho', 'Hidratacao de Patinha e Focinho'],
-  }),
-  makeBlock({
-    id:'avulso',
-    title:'Avulso',
-    icon:'📌',
-    color:'amarelo',
-    cols:['Avulso'],
-  }),
-  makeBlock({
-    id:'aval',
-    title:'Avaliação',
-    icon:'📋',
-    color:'amarelo',
-    cols:['Avaliação', 'Avaliacao'],
-    timeCols:['Hora Avaliação', 'Hora Avaliacao', 'Horário', 'Horario'],
-  }),
-  makeBlock({
-    id:'novo',
-    title:'Cliente Novo',
-    icon:'⭐',
-    color:'adapt',
-    cols:['Cliente Novo', 'Cliente novo', 'Novo Cliente'],
-  }),
-  makeBlock({
-    id:'adapt',
-    title:'Adaptação',
-    icon:'🌟',
-    color:'adapt',
-    cols:['Adaptação', 'Adaptacao'],
-  }),
-  makeBlock({
-    id:'repos',
-    title:'Reposição',
-    icon:'🔄',
-    color:'amarelo',
-    cols:['Reposição', 'Reposicao'],
-  }),
-  makeBlock({
-    id:'faltas',
-    title:'Faltas Avisadas',
-    icon:'⚠️',
-    color:'amarelo',
-    cols:['Faltas Avisadas', 'Falta Avisada', 'Faltas'],
-  }),
-  makeBlock({
-    id:'aniver',
-    title:'AUniversariante',
-    icon:'🎂',
-    color:'rosa',
-    cols:['AUniversariante', 'Aniversariante', 'Aniversário', 'Aniversario'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'outros',
-    title:'Outros',
-    icon:'📝',
-    color:'amarelo',
-    cols:['Outros', 'Observações', 'Observacoes', 'Obs'],
-    useNameOr:false,
-  }),
-  makeBlock({
-    id:'outros2',
-    title:'Outros 2',
-    icon:'📝',
-    color:'amarelo',
-    cols:['Outros 2', 'Outros2', 'Observações 2', 'Observacoes 2', 'Obs 2'],
-    useNameOr:false,
-  }),
+  { id:'vet',       title:'Veterinário',                  icon:'🩺', color:'vet',     special:'banho',
+    fn: rows => rows.filter(r=>has(r,'Veterinário')).map(r=>({ name:v(r,'Veterinário'), time:v(r,'Hora Veterinário') })) },
+
+  { id:'saindo',    title:'Peludinho que Sairá Cedo',    icon:'🚶', color:'amarelo',
+    fn: rows => {
+      const kP = r => Object.keys(r).find(k=>k.toLowerCase().includes('peludinho'));
+      const kH = r => Object.keys(r).find(k=>k.toLowerCase().includes('hora') && k.toLowerCase().includes('saida'));
+      return rows
+        .filter(r=>{ const k=kP(r); return k&&r[k]&&r[k]!=='0'; })
+        .map(r=>({ name: r[kP(r)]||'', time: r[kH(r)]||'' }));
+    }},
+
+  { id:'vermifugo', title:'Vermífugo',                    icon:'💊', color:'vet',
+    fn: rows => rows.filter(r=>has(r,'Vermifugo')).map(r=>({ name:nameOr(r,'Vermifugo'), time:'' })) },
+
+  { id:'carrap',    title:'Carrapaticida',                icon:'🔬', color:'vet',
+    fn: rows => rows.filter(r=>has(r,'Carrapaticida')).map(r=>({ name:nameOr(r,'Carrapaticida'), time:'' })) },
+
+  { id:'coleira',   title:'Troca de Coleira',             icon:'🏷️', color:'vet',
+    fn: rows => rows.filter(r=>has(r,'Troca de Coleira')).map(r=>({ name:nameOr(r,'Troca de Coleira'), time:'' })) },
+
+  { id:'hidrat',    title:'Hidratação Patinha e Focinho', icon:'💧', color:'banho',
+    fn: rows => rows.filter(r=>has(r,'Hidratação patinha e Focinho')).map(r=>({ name:nameOr(r,'Hidratação patinha e Focinho'), time:'' })) },
+
+  { id:'avulso',    title:'Avulso',                      icon:'📌', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Avulso')).map(r=>({ name:nameOr(r,'Avulso'), time:'' })) },
+
+  { id:'aval',      title:'Avaliação',                   icon:'📋', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Avaliação')).map(r=>({ name:nameOr(r,'Avaliação'), time:v(r,'Hora Avaliação') })) },
+
+  { id:'novo',      title:'Cliente Novo',                 icon:'⭐', color:'adapt',
+    fn: rows => rows.filter(r=>has(r,'Cliente Novo')).map(r=>({ name:nameOr(r,'Cliente Novo'), time:'' })) },
+
+  { id:'adapt',     title:'Adaptação',                   icon:'🌟', color:'adapt',
+    fn: rows => rows.filter(r=>has(r,'Adaptação')||has(r,'Adaptação ')).map(r=>({ name:nameOr(r,'Adaptação'), time:'' })) },
+
+  { id:'repos',     title:'Reposição',                   icon:'🔄', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Reposição')).map(r=>({ name:nameOr(r,'Reposição'), time:'' })) },
+
+  { id:'faltas',    title:'Faltas Avisadas',             icon:'⚠️', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Faltas Avisadas')).map(r=>({ name:nameOr(r,'Faltas Avisadas'), time:'' })) },
+
+  // ══ Final: Especial + Outros ═══════════════════════════
+  { id:'aniver',    title:'AUniversariante',              icon:'🎂', color:'rosa',
+    fn: rows => rows.filter(r=>has(r,'AUniversariante')).map(r=>({ name:v(r,'AUniversariante'), time:'' })) },
+
+  { id:'outros',    title:'Outros',                      icon:'📝', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Outros')).map(r=>({ name:v(r,'Outros'), time:'' })) },
+
+  { id:'outros2',   title:'Outros 2',                    icon:'📝', color:'amarelo',
+    fn: rows => rows.filter(r=>has(r,'Outros 2')).map(r=>({ name:v(r,'Outros 2'), time:'' })) },
+
+  { id:'fut4',      title:'Em Breve',                    icon:'➕', color:'futuro', fn:()=>[] },
 ];
 
-const FUTURE_BLOCK = { id:'fut4', title:'Em Breve', icon:'➕', color:'futuro', fn:()=>[] };
-
-// helpers — busca coluna tolerando acento, espacos especiais e pequenas variacoes
-const _strip = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-const _norm  = s => _strip(String(s ?? '').replace(/\u00A0/g, ' '))
-  .replace(/[^a-zA-Z0-9\s]/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim()
-  .toLowerCase();
-const pad2   = x => String(x).padStart(2,'0');
-const KNOWN_COLUMN_KEYS = new Set([
-  'Data',
-  ...PRIMARY_NAME_COLUMNS,
-  ...BASE_BLOCKS.flatMap(block => [...block.cols, ...block.timeCols]),
-  ...ALARM_SOURCES.flatMap(src => [...src.nomeCols, ...src.horaCols]),
-].map(_norm));
-const PRIMARY_NAME_KEY_SET = new Set(PRIMARY_NAME_COLUMNS.map(_norm));
-
-function findColKey(row, key) {
-  const wanted = _norm(key);
-  return Object.keys(row).find(rk => _norm(rk) === wanted) || null;
-}
-
-function orderedUniqueRowKeys(row) {
-  const seen = new Set();
-  return Object.keys(row).filter(key => {
-    const norm = _norm(key);
-    if(!norm || seen.has(norm)) return false;
-    seen.add(norm);
-    return true;
-  });
-}
-
-function v(r, k) {
-  const directKeys = [k, `${k}`, `${k} `, k && k.normalize ? k.normalize('NFC') : k, _strip(k)];
-  for(const dk of directKeys) {
-    if(dk != null && Object.prototype.hasOwnProperty.call(r, dk)) {
-      const value = String(r[dk] ?? '').trim();
-      if(value !== '') return value;
-    }
-  }
-  const match = findColKey(r, k);
-  return match ? String(r[match] ?? '').trim() : '';
-}
-
-function vAny(r, keys) {
-  for(const key of keys) {
-    const value = v(r, key);
-    if(value !== '') return value;
-  }
-  return '';
-}
-
-function hasAny(r, keys) {
-  return keys.some(key => has(r, key));
-}
-
-function has(r, k) {
-  const x = v(r, k);
-  return x !== '' && !isFalseFlag(x);
-}
-
-function isTrueFlag(value) {
-  const norm = _norm(value);
-  return norm === '1' || norm === 'sim' || norm === 'true' || norm === 'x' || norm === 'ok' || norm === 'yes' || norm === 'y';
-}
-
-function isFalseFlag(value) {
-  const norm = _norm(value);
-  return norm === '' || norm === '0' || norm === 'nao' || norm === 'false' || norm === 'no' || norm === 'n';
-}
-
-function looksLikeTimeText(value) {
-  return !!parseHora(value);
-}
-
-function isMeaningfulNameValue(value) {
-  const raw = String(value ?? '').trim();
-  if(raw === '' || isTrueFlag(raw) || isFalseFlag(raw)) return false;
-  if(looksLikeTimeText(raw)) return false;
-  if(/^\d+(?:[.,]\d+)?$/.test(raw)) return false;
-  return true;
-}
-
-function primaryNameSourceColumns(allColumns) {
-  const cols = Array.isArray(allColumns) ? allColumns : [];
-  const result = [];
-  const seen = new Set();
-  const push = value => {
-    const text = String(value ?? '').trim();
-    const norm = _norm(text);
-    if(!norm || seen.has(norm)) return;
-    seen.add(norm);
-    result.push(text);
-  };
-
-  PRIMARY_NAME_COLUMNS.forEach(push);
-
-  cols.forEach(col => {
-    const norm = _norm(col);
-    if(/(^| )nome(s)?($| )/.test(norm) || norm.includes('aluno') || norm.includes('matriculad') || norm.includes('peludinho')) {
-      push(col);
-    }
-  });
-
-  const dataIndex = cols.findIndex(col => _norm(col) === 'data');
-  if(dataIndex > 0) push(cols[dataIndex - 1]);
-
-  return result;
-}
-
-function rowPrimaryNameSourceKey(row) {
-  const orderedKeys = orderedUniqueRowKeys(row);
-  const dataIndex = orderedKeys.findIndex(key => _norm(key) === 'data');
-  return dataIndex > 0 ? orderedKeys[dataIndex - 1] : '';
-}
-
-function primaryNameSourceColumnsFromRows(rows) {
-  const seen = new Set();
-  const result = [];
-  const push = value => {
-    const text = String(value ?? '').trim();
-    const norm = _norm(text);
-    if(!norm || seen.has(norm)) return;
-    seen.add(norm);
-    result.push(text);
-  };
-
-  primaryNameSourceColumns(collectDisplayColumns(rows)).forEach(push);
-  rows.forEach(row => push(rowPrimaryNameSourceKey(row)));
-  return result;
-}
-
-function primaryRowName(r) {
-  const orderedKeys = orderedUniqueRowKeys(r);
-  const candidates = [...new Set([
-    ...primaryNameSourceColumns(orderedKeys),
-    rowPrimaryNameSourceKey(r),
-  ].filter(Boolean))];
-  for(const key of candidates) {
-    const value = v(r, key);
-    if(isMeaningfulNameValue(value)) return value;
-  }
-  return '';
-}
-
-function nameOrValue(value, row) {
-  if(value === '') return '';
-  return isTrueFlag(value) ? primaryRowName(row) : value;
-}
-
-function nameOr(r, k) {
-  const x = v(r, k);
-  if(x === '') return '';
-  return nameOrValue(x, r);
-}
-
-function nameOrAny(r, keys) {
-  for(const key of keys) {
-    const value = v(r, key);
-    if(value !== '') return nameOrValue(value, r);
-  }
-  return '';
-}
-
-function buildEntriesFromColumns(rows, cols, timeCols = [], { useNameOr = true } = {}) {
-  return rows.map(row => {
-    const mainValue = vAny(row, cols);
-    if(mainValue === '') return null;
-    const name = useNameOr ? nameOrAny(row, cols) : mainValue;
-    if(name === '') return null;
-    return { name, time: vAny(row, timeCols) };
-  }).filter(Boolean);
-}
-
-function collectDisplayColumns(rows) {
-  const seen = new Set();
-  const columns = [];
-  rows.forEach(row => {
-    orderedUniqueRowKeys(row).forEach(key => {
-      const norm = _norm(key);
-      if(!norm || seen.has(norm)) return;
-      seen.add(norm);
-      columns.push(String(key).trim());
-    });
-  });
-  return columns;
-}
-
-function dynamicTimeColumnsFor(label, allColumns) {
-  const byNorm = new Map(allColumns.map(col => [_norm(col), col]));
-  const candidates = [
-    `Hora ${label}`,
-    `Horário ${label}`,
-    `Horario ${label}`,
-    `${label} Horário`,
-    `${label} Horario`,
-  ];
-  return [...new Set(candidates.map(candidate => byNorm.get(_norm(candidate))).filter(Boolean))];
-}
-
-function isPairedTimeOnlyColumn(label, allColumns) {
-  const raw = String(label ?? '').trim();
-  const looksLikeTimeColumn = /^\s*Hora\s+/i.test(raw)
-    || /^\s*Hor[áa]rio\s+/i.test(raw)
-    || /\s+Hor[áa]rio\s*$/i.test(raw)
-    || /\s+Hora\s*$/i.test(raw);
-  if(!looksLikeTimeColumn) return false;
-
-  const baseCandidates = [
-    raw.replace(/^\s*Hora\s+/i, ''),
-    raw.replace(/^\s*Hor[áa]rio\s+/i, ''),
-    raw.replace(/\s+Hor[áa]rio\s*$/i, ''),
-    raw.replace(/\s+Hora\s*$/i, ''),
-  ].map(candidate => candidate.trim()).filter(Boolean);
-
-  return baseCandidates.some(candidate => {
-    const wanted = _norm(candidate);
-    return wanted && allColumns.some(col => _norm(col) === wanted);
-  });
-}
-
-function guessBlockIcon(label) {
-  const norm = _norm(label);
-  if(norm.includes('banho')) return '🛁';
-  if(norm.includes('veterin') || norm.includes('vet')) return '🩺';
-  if(norm.includes('verm')) return '💊';
-  if(norm.includes('carrap')) return '🔬';
-  if(norm.includes('coleira')) return '🏷️';
-  if(norm.includes('hidrata')) return '💧';
-  if(norm.includes('adapt')) return '🌟';
-  if(norm.includes('cliente novo') || norm.includes('novo cliente')) return '⭐';
-  if(norm.includes('aniver')) return '🎂';
-  if(norm.includes('restri')) return '🏠⚠️';
-  if(norm.includes('repos')) return '🔄';
-  if(norm.includes('falta')) return '⚠️';
-  if(norm.includes('saida') || norm.includes('saira cedo')) return '🚶';
-  if(norm.includes('hora') || norm.includes('horario')) return '⏰';
-  return '📝';
-}
-
-function guessBlockColor(label) {
-  const norm = _norm(label);
-  if(norm.includes('banho') || norm.includes('hidrata')) return 'banho';
-  if(norm.includes('veterin') || norm.includes('vet') || norm.includes('verm') || norm.includes('carrap') || norm.includes('coleira')) return 'vet';
-  if(norm.includes('adapt') || norm.includes('cliente novo') || norm.includes('novo cliente')) return 'adapt';
-  if(norm.includes('aniver')) return 'rosa';
-  if(norm.includes('restri')) return 'alerta';
-  return 'amarelo';
-}
-
-function slugify(text) {
-  return (_norm(text).replace(/\s+/g, '-') || 'coluna-extra');
-}
-
-function buildDynamicBlocks(rows) {
-  const allColumns = collectDisplayColumns(rows);
-  const primarySourceSet = new Set(primaryNameSourceColumnsFromRows(rows).map(_norm));
-  return allColumns
-    .filter(label => {
-      const norm = _norm(label);
-      if(!norm || KNOWN_COLUMN_KEYS.has(norm) || PRIMARY_NAME_KEY_SET.has(norm)) return false;
-      if(primarySourceSet.has(norm)) return false;
-      if(isPairedTimeOnlyColumn(label, allColumns)) return false;
-      return true;
-    })
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    .map(label => makeBlock({
-      id:`dyn-${slugify(label)}`,
-      title:label,
-      icon:guessBlockIcon(label),
-      color:guessBlockColor(label),
-      cols:[label],
-      timeCols:dynamicTimeColumnsFor(label, allColumns),
-    }));
-}
-
-function getRenderableBlocks(rows) {
-  return [...BASE_BLOCKS, ...buildDynamicBlocks(rows), FUTURE_BLOCK];
-}
-
-function formatDateParts(day, month, year) {
-  return `${pad2(day)}/${pad2(month)}/${year}`;
-}
-
-function normalizeDateValue(value) {
-  const raw = String(value ?? '').replace(/\u00A0/g, ' ').trim();
-  if(!raw) return '';
-
-  let match = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+.*)?$/);
-  if(match) {
-    let year = +match[3];
-    if(year < 100) year += 2000;
-    return formatDateParts(+match[1], +match[2], year);
-  }
-
-  match = raw.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T].*)?$/);
-  if(match) return formatDateParts(+match[3], +match[2], +match[1]);
-
-  return raw;
-}
-
-function selectedDateStr() {
-  return formatDateParts(selectedDate.getDate(), selectedDate.getMonth()+1, selectedDate.getFullYear());
-}
-
-function rowDateStr(row) {
-  return normalizeDateValue(v(row, 'Data'));
-}
-
-function rowsForSelectedDate(allRows) {
-  const dateStr = selectedDateStr();
-  return allRows.filter(row => rowDateStr(row) === dateStr);
-}
+// helpers — busca coluna tolerando qualquer variação de acento
+const _strip  = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const v = (r,k) => {
+  const kN = k.normalize('NFC');          // com acento NFC
+  const kS = _strip(k);                   // sem acento (preserva maiúsculas)
+  // Tenta 6 variações diretas antes do loop
+  const direct = (r[kN]||r[kN+' ']||r[k]||r[k+' ']||r[kS]||r[kS+' ']||'').trim();
+  if (direct !== '') return direct;
+  // Busca profunda: compara ambos sem acento e sem case
+  const kSL = kS.toLowerCase();
+  const match = Object.keys(r).find(rk => _strip(rk).toLowerCase() === kSL);
+  return match ? String(r[match]).trim() : '';
+};
+const has    = (r,k) => { const x=v(r,k); return x!==''&&x!=='0'; };
+const nameOr = (r,k) => { const x=v(r,k); return (x==='1'||x.toLowerCase()==='sim') ? v(r,'Aulunos') : x; };
 
 // ════════════════════════════════════════════════════════════
 //  ESTADO
 // ════════════════════════════════════════════════════════════
-let selectedDate = new Date();
+let selectedDate = new Date(); selectedDate.setHours(0,0,0,0);
 const mem = {};
 let lastOk=null, countdown=REFRESH_OK, loading=false, status='ok';
 let alarmActive = false;
 let activeTab = 'rotinas';
-let followToday = true;
-let brasiliaTodayKey = '';
 
 // ════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════
 function init() {
-  syncSelectedDateWithToday(true);
   setFraseDia();
   syncInternetTime();                          // sincroniza na abertura
   setInterval(syncInternetTime, 30*60*1000);  // ressincroniza a cada 30 min
@@ -1575,6 +1188,7 @@ function init() {
   setInterval(updateClock, 1000);
   setInterval(tick, 1000);
   setInterval(checkAlarm, 10000);
+  updateDateLabel();
   switchTab('rotinas');
   loadData();
 }
@@ -1612,11 +1226,6 @@ async function syncInternetTime() {
     const el = document.getElementById('clock-sync');
     if(el) { el.textContent = '💻 Local'; el.title = 'Usando relógio do computador (sem internet)'; }
   }
-  const selectedChanged = syncSelectedDateWithToday(followToday);
-  if(selectedChanged) manualRefresh();
-  setFraseDia();
-  updateClock();
-  if(selectedChanged) loadData();
 }
 
 function getBrasiliaDate() {
@@ -1630,43 +1239,12 @@ function getBrasiliaDate() {
   return new Date(get('year'), get('month')-1, get('day'), get('hour'), get('minute'), get('second'));
 }
 
-function getBrasiliaToday() {
-  const d = getBrasiliaDate();
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function dateKey(date) {
-  return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
-}
-
-function syncSelectedDateWithToday(force=false) {
-  const today = getBrasiliaToday();
-  const nextKey = dateKey(today);
-  const shouldFollow = force || followToday;
-  const selectedChanged = shouldFollow && dateKey(selectedDate) !== nextKey;
-
-  brasiliaTodayKey = nextKey;
-  if(shouldFollow) {
-    selectedDate = today;
-    followToday = true;
-    updateDateLabel();
-  }
-  return selectedChanged;
-}
-
 function updateClock() {
   const d = getBrasiliaDate();
-  if(dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate())) !== brasiliaTodayKey) {
-    const selectedChanged = syncSelectedDateWithToday(followToday);
-    setFraseDia();
-    if(selectedChanged) {
-      manualRefresh();
-      loadData();
-    }
-  }
-  document.getElementById('clock-hora').textContent  = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  const p = x => String(x).padStart(2,'0');
+  document.getElementById('clock-hora').textContent  = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
   document.getElementById('clock-dia').textContent   = DIAS[d.getDay()];
-  document.getElementById('clock-data').textContent  = `${pad2(d.getDate())} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  document.getElementById('clock-data').textContent  = `${p(d.getDate())} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1684,18 +1262,18 @@ function setFraseDia() {
 //  NAVEGAÇÃO
 // ════════════════════════════════════════════════════════════
 function goToToday() {
-  syncSelectedDateWithToday(true);
-  loadData();
+  const d = getBrasiliaDate();
+  selectedDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  updateDateLabel(); loadData();
 }
 function changeDate(delta) {
   selectedDate.setDate(selectedDate.getDate()+delta);
-  followToday = dateKey(selectedDate) === brasiliaTodayKey;
   updateDateLabel(); loadData();
 }
 function updateDateLabel() {
-  const d=selectedDate;
+  const d=selectedDate, p=x=>String(x).padStart(2,'0');
   document.getElementById('date-label').textContent =
-    `${DIAS[d.getDay()]}, ${pad2(d.getDate())} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+    `${DIAS[d.getDay()]}, ${p(d.getDate())} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1716,31 +1294,23 @@ async function loadData() {
   document.getElementById('status-label').textContent = 'Carregando...';
 
   const y=selectedDate.getFullYear(), m=selectedDate.getMonth();
-  const key=`${y}-${m}`;
-  const cachedCurrent = mem[key] || loadCache(key);
-  if(!mem[key] && cachedCurrent) mem[key] = cachedCurrent;
-
-  if(cachedCurrent){
-    status='cache';
-    setDot('cache');
-    document.getElementById('status-label').textContent='Exibindo dados salvos enquanto atualiza';
-    showContent(true);
-    renderDay();
-  }
+  const months=[{y,m}, m>0?{y,m:m-1}:{y:y-1,m:11}, m<11?{y,m:m+1}:{y:y+1,m:0}];
 
   let anyOk=false, anyErr=false;
-  try {
-    mem[key]=await fetchMonthSheet(y, m);
-    saveCache(key,mem[key]); anyOk=true;
-  } catch(e) {
-    const c=loadCache(key);
-    if(c){ mem[key]=c; anyOk=true; anyErr=true; } else anyErr=true;
+  for(const {y:yr,m:mo} of months) {
+    const key=`${yr}-${mo}`;
+    if(mem[key] && mem[key].length){ anyOk=true; continue; }
+    try {
+      const nome=`${yr} DayCare ${MESES[mo]}`;
+      let rows;
+      try { rows=await fetchSheet(nome); }
+      catch(_){ rows=await fetchSheet(nome.normalize('NFD').replace(/[\u0300-\u036f]/g,'')); }
+      mem[key]=rows; saveCache(key,mem[key]); anyOk=true;
+    } catch(e) {
+      const c=loadCache(key);
+      if(c){ mem[key]=c; anyOk=true; anyErr=true; } else anyErr=true;
+    }
   }
-
-  [
-    m>0?{y,m:m-1}:{y:y-1,m:11},
-    m<11?{y,m:m+1}:{y:y+1,m:0},
-  ].forEach(({y:yr,m:mo})=>{ prefetchMonth(yr, mo); });
 
   loading=false; setBtn(true);
   if(anyOk&&!anyErr){
@@ -1770,165 +1340,15 @@ function manualRefresh() {
 // ════════════════════════════════════════════════════════════
 //  JSONP
 // ════════════════════════════════════════════════════════════
-const MONTH_NAME_ALIASES = [
-  ['janeiro', 'jan'],
-  ['fevereiro', 'fev'],
-  ['marco', 'mar'],
-  ['abril', 'abr'],
-  ['maio', 'mai'],
-  ['junho', 'jun'],
-  ['julho', 'jul'],
-  ['agosto', 'ago'],
-  ['setembro', 'set'],
-  ['outubro', 'out'],
-  ['novembro', 'nov'],
-  ['dezembro', 'dez'],
-];
-
-function monthSheetCandidates(year, monthIndex) {
-  const month = MESES[monthIndex];
-  const monthAscii = _strip(month);
-  return [...new Set([
-    `${year} DayCare ${month}`,
-    `${year} DayCare ${monthAscii}`,
-    `${year} Daycare ${month}`,
-    `${year} Daycare ${monthAscii}`,
-    `${year} Day Care ${month}`,
-    `${year} Day Care ${monthAscii}`,
-    ` ${year} DayCare ${month}`,
-    ` ${year} DayCare ${monthAscii}`,
-    ` ${year} Daycare ${month}`,
-    ` ${year} Daycare ${monthAscii}`,
-    `${year} ${month}`,
-    `${year} ${monthAscii}`,
-    `DayCare ${month}`,
-    `DayCare ${monthAscii}`,
-    `Daycare ${month}`,
-    `Daycare ${monthAscii}`,
-    `Day Care ${month}`,
-    `Day Care ${monthAscii}`,
-  ])];
-}
-
-function fetchJsonp(url, callbackParam = 'callback') {
-  return new Promise((resolve,reject)=>{
-    const cb='zcb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-    const sc=document.createElement('script');
-    const timer=setTimeout(()=>{ cleanup(); reject(new Error(`Timeout ao carregar ${url}`)); }, 20000);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cb];
-      sc.parentNode && sc.parentNode.removeChild(sc);
-    }
-    window[cb] = data => { cleanup(); resolve(data); };
-    sc.onerror = ()=>{ cleanup(); reject(new Error(`Falha ao carregar ${url}`)); };
-    sc.src = `${url}${url.includes('?') ? '&' : '?'}${callbackParam}=${cb}&t=${Date.now()}`;
-    document.head.appendChild(sc);
-  });
-}
-
-function prefetchMonth(year, monthIndex) {
-  const key=`${year}-${monthIndex}`;
-  if(mem[key]) return Promise.resolve(mem[key]);
-
-  return fetchMonthSheet(year, monthIndex)
-    .then(rows=>{
-      mem[key]=rows;
-      saveCache(key, rows);
-      return rows;
-    })
-    .catch(()=>{
-      const cached = loadCache(key);
-      if(cached) {
-        mem[key]=cached;
-        return cached;
-      }
-      return null;
-    });
-}
-
-function firstFulfilled(tasks) {
-  return new Promise((resolve, reject) => {
-    if(!tasks.length) {
-      reject(new Error('Nenhuma tentativa disponivel.'));
-      return;
-    }
-
-    let nextIndex = 0;
-    let active = 0;
-    let settled = false;
-    const errors = [];
-
-    function launchNext() {
-      while(!settled && active < SHEET_PROBE_CONCURRENCY && nextIndex < tasks.length) {
-        const currentIndex = nextIndex++;
-        active++;
-
-        Promise.resolve()
-          .then(()=>tasks[currentIndex]())
-          .then(result=>{
-            if(settled) return;
-            settled = true;
-            resolve(result);
-          })
-          .catch(err=>{
-            errors[currentIndex] = err;
-            active--;
-            if(settled) return;
-            if(nextIndex >= tasks.length && active === 0) {
-              reject(errors.find(Boolean) || new Error('Todas as tentativas falharam.'));
-              return;
-            }
-            launchNext();
-          });
-      }
-    }
-
-    launchNext();
-  });
-}
-
-async function fetchMonthSheet(year, monthIndex) {
-  const candidates = monthSheetCandidates(year, monthIndex);
-  try {
-    return await firstFulfilled(candidates.map(name => () => fetchSheet(name)));
-  } catch(err) {
-    throw err || new Error(`Nao foi possivel localizar a aba ${MESES[monthIndex]} de ${year}.`);
-  }
-}
-
 function fetchSheet(name) {
   return new Promise((resolve,reject)=>{
     const cb='zcb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     const sc=document.createElement('script');
-    const timer=setTimeout(()=>{ cleanup(); reject(new Error(`Timeout ao carregar "${name}"`)); }, SHEET_FETCH_TIMEOUT_MS);
-    function cleanup() {
-      clearTimeout(timer);
-      delete window[cb];
-      sc.parentNode && sc.parentNode.removeChild(sc);
-    }
-    window[cb] = data => {
-      cleanup();
-      if(!data) {
-        reject(new Error(`Resposta vazia da aba "${name}"`));
-        return;
-      }
-      if(data.status && data.status !== 'ok') {
-        const details = (data.errors || [])
-          .map(err => err.detailed_message || err.message)
-          .filter(Boolean)
-          .join(' | ');
-        reject(new Error(details || `Falha ao carregar a aba "${name}"`));
-        return;
-      }
-      if(!data.table) {
-        reject(new Error(`Aba "${name}" sem tabela retornada`));
-        return;
-      }
-      resolve(parseGviz(data.table));
-    };
-    sc.onerror = ()=>{ cleanup(); reject(new Error(`Falha ao carregar a aba "${name}"`)); };
-    sc.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=reqId:0;responseHandler:${cb}&sheet=${encodeURIComponent(name)}&t=${Date.now()}`;
+    const timer=setTimeout(()=>{cleanup(); reject(new Error('Timeout'));},20000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; sc.parentNode&&sc.parentNode.removeChild(sc); }
+    window[cb]=data=>{ cleanup(); if(data&&data.table) resolve(parseGviz(data.table)); else reject(new Error('Aba não encontrada: '+name)); };
+    sc.onerror=()=>{ cleanup(); reject(new Error('Erro de rede: '+name)); };
+    sc.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=reqId:0;responseHandler:${cb}&sheet=${encodeURIComponent(name)}&t=${Date.now()}`;
     document.head.appendChild(sc);
   });
 }
@@ -1941,30 +1361,23 @@ function parseGviz(table) {
       const key=cols[i]||`col${i}`;
       let val='';
       if(cell&&cell.v!=null){
-        if(cell.v instanceof Date){
-          const yr=cell.v.getFullYear(), mo=cell.v.getMonth(), dy=cell.v.getDate();
-          if(yr===1899&&mo===11&&dy===30){
-            val=`${pad2(cell.v.getHours())}:${pad2(cell.v.getMinutes())}`;
-          } else {
-            val=cell.f!=null?normalizeDateValue(String(cell.f)):formatDateParts(dy, mo+1, yr);
-          }
-        } else if(typeof cell.v==='string'&&cell.v.startsWith('Date(')){
+        if(typeof cell.v==='string'&&cell.v.startsWith('Date(')){
           const p=cell.v.match(/Date\((-?\d+),(\d+),(\d+)(?:,(\d+),(\d+(?:\.\d+)?))?/);
           if(p){
             const yr=+p[1],mo=+p[2],dy=+p[3];
             if(p[4]!=null&&yr===1899&&mo===11&&dy===30){
               // Hora pura — sempre HH:MM do valor bruto (ignora cell.f que pode vir "10h")
               const hr=+p[4],mn=Math.round(+p[5]);
-              val=`${pad2(hr)}:${pad2(mn)}`;
+              val=`${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
             } else {
               // Data (com ou sem hora)
-              val=cell.f!=null?normalizeDateValue(String(cell.f)):formatDateParts(dy, mo+1, yr);
+              val=cell.f!=null?String(cell.f):`${String(dy).padStart(2,'0')}/${String(mo+1).padStart(2,'0')}/${yr}`;
             }
           } else { val=cell.f!=null?String(cell.f):String(cell.v); }
         } else {
           val=cell.f!=null?String(cell.f):String(cell.v);
-          // Normaliza hora digitada como texto: "10h05"→"10:05" / "10h"→"10:00" / "13;30"→"13:30"
-          val=val.replace(/^(\d{1,2})[h;:](\d{1,2})$/i,
+          // Normaliza hora digitada como texto: "10h05"→"10:05" / "10h"→"10:00"
+          val=val.replace(/^(\d{1,2})h(\d{1,2})$/i,
                 (_,h,m)=>`${String(+h).padStart(2,'0')}:${String(+m).padStart(2,'0')}`)
                .replace(/^(\d{1,2})h$/i,
                 (_,h)=>`${String(+h).padStart(2,'0')}:00`);
@@ -2006,7 +1419,7 @@ function toggleTodo(blockId, nome) {
 // ════════════════════════════════════════════════════════════
 function parseHora(str) {
   if(!str) return null;
-  str = str.trim().toLowerCase().replace(/;/g, ':');
+  str = str.trim().toLowerCase();
   let m;
   if((m=str.match(/^(\d{1,2})h(\d{2})?$/))) return { h:+m[1], min:m[2]?+m[2]:0 };
   if((m=str.match(/^(\d{1,2}):(\d{2})$/)))  return { h:+m[1], min:+m[2] };
@@ -2017,8 +1430,8 @@ function parseHora(str) {
 // Se não tiver horário, retorna o valor completo como nome
 function parseNameTime(str) {
   if(!str) return { name:'', time:'' };
-  const m = str.trim().match(/^(.*?)\s+((\d{1,2})[h:;](\d{2}))$/i);
-  if(m) return { name: m[1].trim(), time: m[2].replace(/[h;]/i,':') };
+  const m = str.trim().match(/^(.*?)\s+((\d{1,2})[h:](\d{2}))$/i);
+  if(m) return { name: m[1].trim(), time: m[2].replace('h',':') };
   return { name: str.trim(), time: '' };
 }
 
@@ -2038,15 +1451,26 @@ function checkAlarm() {
   const now  = getBrasiliaDate();
   const y=selectedDate.getFullYear(), m=selectedDate.getMonth();
   const all  = mem[`${y}-${m}`]||[];
-  const date = selectedDateStr();
-  const rows = rowsForSelectedDate(all);
+  const p    = x=>String(x).padStart(2,'0');
+  const date = `${p(selectedDate.getDate())}/${p(selectedDate.getMonth()+1)}/${selectedDate.getFullYear()}`;
+  const rows = all.filter(r=>(r['Data']||'').trim()===date);
   const triggered = JSON.parse(sessionStorage.getItem(ALARM_KEY)||'{}');
+
+  // busca parcial para colunas com problemas de acento
+  const vPartial = (r, colSearch) => {
+    const k = Object.keys(r).find(rk => rk.toLowerCase().includes(colSearch.toLowerCase()));
+    return k ? r[k] : '';
+  };
 
   const toFire = [];
   for(const src of ALARM_SOURCES) {
     for(const row of rows) {
-      const nome  = vAny(row, src.nomeCols);
-      const horaS = vAny(row, src.horaCols);
+      const nome  = src.nomeCol.includes('saira') || src.nomeCol.includes('peludinho')
+        ? vPartial(row, 'peludinho')
+        : v(row, src.nomeCol);
+      const horaS = src.horaCol.includes('saida')
+        ? vPartial(row, 'hora saida')
+        : v(row, src.horaCol);
       if(!nome||!horaS) continue;
       const hora  = parseHora(horaS);
       if(!hora) continue;
@@ -2057,7 +1481,7 @@ function checkAlarm() {
       if(alarmH < 0) alarmH = 23;
 
       if(alarmH===now.getHours() && alarmMin===now.getMinutes()) {
-        const key = `${date}_${src.nomeCols[0]}_${nome}_${horaS}`;
+        const key = `${date}_${src.nomeCol}_${nome}_${horaS}`;
         if(!triggered[key]) {
           triggered[key]=true;
           toFire.push({ nome, horaS, icon:src.icon, msg:src.msg });
@@ -2133,20 +1557,21 @@ function playBeep() {
 function renderDay() {
   const y=selectedDate.getFullYear(), m=selectedDate.getMonth();
   const all=mem[`${y}-${m}`]||[];
-  const rows=rowsForSelectedDate(all);
+  const p=x=>String(x).padStart(2,'0');
+  const dateStr=`${p(selectedDate.getDate())}/${p(selectedDate.getMonth()+1)}/${selectedDate.getFullYear()}`;
+  const rows=all.filter(r=>(r['Data']||'').trim()===dateStr);
   const todo=getTodo();
-  const blocks=getRenderableBlocks(rows);
 
   // ─── ABA: ROTINAS AMIGOS ───────────────────────────────
   document.getElementById('blocks-grid').innerHTML =
-    blocks.map(b=>buildBlock(b, sortByTime(b.fn(rows).filter(e=>e.name&&e.name!=='')), todo)).join('');
+    BLOCKS.map(b=>buildBlock(b, sortByTime(b.fn(rows).filter(e=>e.name&&e.name!=='')), todo)).join('');
 
   // ─── ABA: VISÃO GERAL ─────────────────────────────────
   const totalDia = rows.length;
   document.getElementById('geral-subtitulo').textContent =
     `${totalDia} peludinho${totalDia!==1?'s':''} registrado${totalDia!==1?'s':''} hoje`;
 
-  document.getElementById('geral-grid').innerHTML = blocks.map(b => {
+  document.getElementById('geral-grid').innerHTML = BLOCKS.map(b => {
     const entries  = sortByTime(b.fn(rows).filter(e=>e.name&&e.name!==''));
     const count    = entries.length;
     const isFuturo = b.color === 'futuro';
@@ -2234,11 +1659,12 @@ function verColunas() {
   const all=mem[`${y}-${m}`]||[];
   if(!all.length){ alert('Nenhum dado carregado. Clique em Atualizar primeiro.'); return; }
 
-  const dateStr=selectedDateStr();
-  const rows=rowsForSelectedDate(all);
+  const p=x=>String(x).padStart(2,'0');
+  const dateStr=`${p(selectedDate.getDate())}/${p(selectedDate.getMonth()+1)}/${selectedDate.getFullYear()}`;
+  const rows=all.filter(r=>(r['Data']||'').trim()===dateStr);
 
   // Mostra dados brutos das primeiras linhas com algum conteúdo (além da Data)
-  const rowsComDados = rows.filter(r=>Object.entries(r).some(([k,v])=>_norm(k)!=='data'&&v!=='')).slice(0,3);
+  const rowsComDados = rows.filter(r=>Object.entries(r).some(([k,v])=>k!=='Data'&&v!=='')).slice(0,3);
 
   let msg = `📅 Data: ${dateStr} — ${rows.length} linhas\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -2262,7 +1688,7 @@ function verColunas() {
 
   // Resultado de cada bloco
   msg += `📦 Resultado por bloco:\n`;
-  getRenderableBlocks(rows).forEach(b=>{
+  BLOCKS.forEach(b=>{
     if(b.color==='futuro') return;
     const entries = b.fn(rows).filter(e=>e.name&&e.name!=='');
     msg += `  ${b.icon} ${b.title}: ${entries.length} item(ns)`;
