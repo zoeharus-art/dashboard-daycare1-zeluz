@@ -747,6 +747,8 @@ const SHEET_ID   = '1sYJfssdMiUGkyeUX2EUUVpSjpE80kETDT6Gktnqd9kA';
 const REFRESH_OK = 120;
 const REFRESH_ER = 30;
 const CACHE_KEY  = 'zeluz_dc_v3';
+const SHEET_FETCH_TIMEOUT_MS = 8000;
+const SHEET_PROBE_CONCURRENCY = 4;
 const TODO_KEY   = 'zeluz_todo_v1';
 const ALARM_KEY  = 'zeluz_alarm_v1';
 
@@ -1714,20 +1716,31 @@ async function loadData() {
   document.getElementById('status-label').textContent = 'Carregando...';
 
   const y=selectedDate.getFullYear(), m=selectedDate.getMonth();
-  const months=[{y,m}, m>0?{y,m:m-1}:{y:y-1,m:11}, m<11?{y,m:m+1}:{y:y+1,m:0}];
+  const key=`${y}-${m}`;
+  const cachedCurrent = mem[key] || loadCache(key);
+  if(!mem[key] && cachedCurrent) mem[key] = cachedCurrent;
+
+  if(cachedCurrent){
+    status='cache';
+    setDot('cache');
+    document.getElementById('status-label').textContent='Exibindo dados salvos enquanto atualiza';
+    showContent(true);
+    renderDay();
+  }
 
   let anyOk=false, anyErr=false;
-  for(const {y:yr,m:mo} of months) {
-    const key=`${yr}-${mo}`;
-    if(mem[key]){ anyOk=true; continue; }
-    try {
-      mem[key]=await fetchMonthSheet(yr, mo);
-      saveCache(key,mem[key]); anyOk=true;
-    } catch(e) {
-      const c=loadCache(key);
-      if(c){ mem[key]=c; anyOk=true; anyErr=true; } else anyErr=true;
-    }
+  try {
+    mem[key]=await fetchMonthSheet(y, m);
+    saveCache(key,mem[key]); anyOk=true;
+  } catch(e) {
+    const c=loadCache(key);
+    if(c){ mem[key]=c; anyOk=true; anyErr=true; } else anyErr=true;
   }
+
+  [
+    m>0?{y,m:m-1}:{y:y-1,m:11},
+    m<11?{y,m:m+1}:{y:y+1,m:0},
+  ].forEach(({y:yr,m:mo})=>{ prefetchMonth(yr, mo); });
 
   loading=false; setBtn(true);
   if(anyOk&&!anyErr){
@@ -1814,24 +1827,81 @@ function fetchJsonp(url, callbackParam = 'callback') {
   });
 }
 
+function prefetchMonth(year, monthIndex) {
+  const key=`${year}-${monthIndex}`;
+  if(mem[key]) return Promise.resolve(mem[key]);
+
+  return fetchMonthSheet(year, monthIndex)
+    .then(rows=>{
+      mem[key]=rows;
+      saveCache(key, rows);
+      return rows;
+    })
+    .catch(()=>{
+      const cached = loadCache(key);
+      if(cached) {
+        mem[key]=cached;
+        return cached;
+      }
+      return null;
+    });
+}
+
+function firstFulfilled(tasks) {
+  return new Promise((resolve, reject) => {
+    if(!tasks.length) {
+      reject(new Error('Nenhuma tentativa disponivel.'));
+      return;
+    }
+
+    let nextIndex = 0;
+    let active = 0;
+    let settled = false;
+    const errors = [];
+
+    function launchNext() {
+      while(!settled && active < SHEET_PROBE_CONCURRENCY && nextIndex < tasks.length) {
+        const currentIndex = nextIndex++;
+        active++;
+
+        Promise.resolve()
+          .then(()=>tasks[currentIndex]())
+          .then(result=>{
+            if(settled) return;
+            settled = true;
+            resolve(result);
+          })
+          .catch(err=>{
+            errors[currentIndex] = err;
+            active--;
+            if(settled) return;
+            if(nextIndex >= tasks.length && active === 0) {
+              reject(errors.find(Boolean) || new Error('Todas as tentativas falharam.'));
+              return;
+            }
+            launchNext();
+          });
+      }
+    }
+
+    launchNext();
+  });
+}
+
 async function fetchMonthSheet(year, monthIndex) {
   const candidates = monthSheetCandidates(year, monthIndex);
-  let lastError = null;
-  for(const name of candidates) {
-    try {
-      return await fetchSheet(name);
-    } catch(err) {
-      lastError = err;
-    }
+  try {
+    return await firstFulfilled(candidates.map(name => () => fetchSheet(name)));
+  } catch(err) {
+    throw err || new Error(`Nao foi possivel localizar a aba ${MESES[monthIndex]} de ${year}.`);
   }
-  throw lastError || new Error(`Nao foi possivel localizar a aba ${MESES[monthIndex]} de ${year}.`);
 }
 
 function fetchSheet(name) {
   return new Promise((resolve,reject)=>{
     const cb='zcb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     const sc=document.createElement('script');
-    const timer=setTimeout(()=>{ cleanup(); reject(new Error(`Timeout ao carregar "${name}"`)); }, 20000);
+    const timer=setTimeout(()=>{ cleanup(); reject(new Error(`Timeout ao carregar "${name}"`)); }, SHEET_FETCH_TIMEOUT_MS);
     function cleanup() {
       clearTimeout(timer);
       delete window[cb];

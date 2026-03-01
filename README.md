@@ -404,6 +404,7 @@ function preencherPeriodo() {
 | **Blocos automaticos** | Qualquer coluna preenchida e nao mapeada vira um bloco extra automaticamente |
 | **Resolucao de abas** | O dashboard tenta encontrar a aba do mes mesmo com pequenas variacoes no nome |
 | **Nome-base do peludinho** | Quando necessario, o dashboard usa a coluna imediatamente anterior a `Data` como fonte principal do nome |
+| **Carregamento resiliente** | O dashboard abre pelo mes selecionado primeiro, usa cache imediato quando existir e deixa os meses vizinhos para segundo plano |
 
 ---
 
@@ -417,6 +418,7 @@ function preencherPeriodo() {
 | Datas não encontradas | Formato extremo ou valor invalido | Prefira `DD/MM/AAAA`; o dashboard tambem aceita `DD/MM/AA` e `DD-MM-AAAA HH:MM` |
 | Acento na coluna não reconhecido | Encoding | O dashboard trata acentos, espacos extras e variacoes comuns automaticamente |
 | Mes nao abre | Nome da aba mudou | Clique em `🔄 Atualizar`; o dashboard tenta os nomes candidatos conhecidos para a aba |
+| Fica preso em `Carregando...` | Mes inexistente, internet instavel ou tentativa lenta em abas vizinhas | O dashboard agora prioriza o mes atual, usa cache imediato e limita o tempo de cada tentativa de aba |
 | Bloco mostra `1` no lugar do nome | A planilha usou flag em vez do nome e o nome-base veio em outra coluna | O dashboard agora tenta usar a coluna-base anterior a `Data` ou colunas como `Nomes`/`Matriculados` |
 | Logo com muito espaço em branco | PNG com padding transparente | Ajuste `height` do `.logo-wrap` e `margin-top` do `.logo-img` |
 
@@ -468,4 +470,5 @@ Desenvolvido com Claude Code (Anthropic)
 | Fev/2026 | v4 | **Novo logo** Wordmark 24 (dourado, fundo transparente) · **Header azul profundo** · **Grade 4 colunas** · **Nova ordem dos blocos** · Troca de Coleira → cor verde (vet) · **Hóspedes com Restrições**: listras diagonais animadas + brilho pulsante · **Frase do dia** 20px centralizada com glow dourado · Vocabulário Zêluz nas frases (FILHOts, peludinhos) · Alarme dispara **5 min antes** com mensagem atualizada · **Botão ⏰ Testar Alarme** · Tabs com espaçamento mínimo |
 | 28/02/2026 | v5 | Correcao estrutural da leitura da planilha: ampliacao dos nomes candidatos das abas mensais, normalizacao ampliada de datas, suporte a aliases de colunas, fallback para flags (`1`, `Sim`, `OK`, etc.), criacao automatica de blocos para colunas nao mapeadas, diagnostico atualizado, teste local `tests/dashboard-regression.js` e documentacao consolidada |
 | 01/03/2026 | v6 | Varredura tecnica da primeira ate a ultima aba da planilha publica; ajuste do nome-base do peludinho pela coluna anterior a `Data`; exclusao dessa coluna dos blocos dinamicos; suporte a horarios com `;`; ampliacao do fallback para abas antigas sem ano ou com espaco inicial; regressao atualizada com casos reais da planilha |
+| 01/03/2026 | v7 | Correcao do carregamento do dashboard publicado: leitura prioriza o mes atual, exibe cache imediatamente quando existir, deixa meses vizinhos em segundo plano, limita timeout por aba e paraleliza a busca pelos nomes candidatos para evitar travamento prolongado em `Carregando...` |
 | 01/03/2026 | docs | Documentada oficialmente a troca da assinatura/branding de `Inteligência Criativa` para `Kairós`, a varredura completa das abas reais e a regra operacional de salvar/gerar backup a cada atualizacao grande |
