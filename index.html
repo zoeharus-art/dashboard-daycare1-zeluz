@@ -747,7 +747,6 @@ const SHEET_ID   = '1sYJfssdMiUGkyeUX2EUUVpSjpE80kETDT6Gktnqd9kA';
 const REFRESH_OK = 120;
 const REFRESH_ER = 30;
 const CACHE_KEY  = 'zeluz_dc_v3';
-const SHEET_LIST_KEY = 'zeluz_sheet_names_v1';
 const TODO_KEY   = 'zeluz_todo_v1';
 const ALARM_KEY  = 'zeluz_alarm_v1';
 
@@ -1561,8 +1560,6 @@ let alarmActive = false;
 let activeTab = 'rotinas';
 let followToday = true;
 let brasiliaTodayKey = '';
-let sheetNamesMem = null;
-let sheetNamesPromise = null;
 
 // ════════════════════════════════════════════════════════════
 //  INIT
@@ -1754,7 +1751,6 @@ function manualRefresh() {
   const y=selectedDate.getFullYear(), m=selectedDate.getMonth();
   [{y,m},m>0?{y,m:m-1}:{y:y-1,m:11},m<11?{y,m:m+1}:{y:y+1,m:0}]
     .forEach(({y:yr,m:mo})=>delete mem[`${yr}-${mo}`]);
-  clearSheetNamesCache();
   countdown=1;
 }
 
@@ -1801,28 +1797,6 @@ function monthSheetCandidates(year, monthIndex) {
   ])];
 }
 
-function saveSheetNamesCache(names) {
-  try {
-    localStorage.setItem(SHEET_LIST_KEY, JSON.stringify({ names, t: Date.now() }));
-  } catch(_) {}
-}
-
-function loadSheetNamesCache() {
-  try {
-    const payload = JSON.parse(localStorage.getItem(SHEET_LIST_KEY) || 'null');
-    if(payload && Array.isArray(payload.names) && Date.now() - payload.t < 6 * 60 * 60 * 1000) {
-      return payload.names;
-    }
-  } catch(_) {}
-  return null;
-}
-
-function clearSheetNamesCache() {
-  sheetNamesMem = null;
-  sheetNamesPromise = null;
-  try { localStorage.removeItem(SHEET_LIST_KEY); } catch(_) {}
-}
-
 function fetchJsonp(url, callbackParam = 'callback') {
   return new Promise((resolve,reject)=>{
     const cb='zcb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
@@ -1840,69 +1814,8 @@ function fetchJsonp(url, callbackParam = 'callback') {
   });
 }
 
-async function fetchSheetNames() {
-  const data = await fetchJsonp(`https://spreadsheets.google.com/feeds/worksheets/${SHEET_ID}/public/basic?alt=json-in-script`);
-  const entries = data && data.feed && Array.isArray(data.feed.entry) ? data.feed.entry : [];
-  const names = entries
-    .map(entry => entry && entry.title && entry.title.$t)
-    .filter(Boolean);
-  if(!names.length) throw new Error('Nenhuma aba foi retornada pela planilha.');
-  return names;
-}
-
-async function getSheetNames() {
-  if(Array.isArray(sheetNamesMem) && sheetNamesMem.length) return sheetNamesMem;
-
-  const cached = loadSheetNamesCache();
-  if(Array.isArray(cached) && cached.length) {
-    sheetNamesMem = cached;
-    return cached;
-  }
-
-  if(!sheetNamesPromise) {
-    sheetNamesPromise = fetchSheetNames()
-      .then(names => {
-        sheetNamesMem = names;
-        saveSheetNamesCache(names);
-        return names;
-      })
-      .finally(() => { sheetNamesPromise = null; });
-  }
-
-  return sheetNamesPromise;
-}
-
-function scoreSheetName(name, year, monthIndex) {
-  const norm = _norm(name);
-  if(!norm) return 0;
-
-  const monthAliases = MONTH_NAME_ALIASES[monthIndex] || [_norm(MESES[monthIndex])];
-  let score = 0;
-  if(norm.includes(String(year))) score += 12;
-  if(monthAliases.some(alias => norm.includes(alias))) score += 10;
-  if(norm.includes('daycare')) score += 6;
-  if(norm.includes('day care')) score += 5;
-  if(norm.startsWith(`${year} daycare`)) score += 4;
-  if(norm.startsWith(`${year} day care`)) score += 4;
-  return score;
-}
-
-function resolveMonthSheetCandidates(sheetNames, year, monthIndex) {
-  return sheetNames
-    .map(name => ({ name, score: scoreSheetName(name, year, monthIndex) }))
-    .filter(item => item.score >= 18)
-    .sort((a, b) => b.score - a.score || a.name.length - b.name.length)
-    .map(item => item.name);
-}
-
 async function fetchMonthSheet(year, monthIndex) {
-  let candidates = [];
-  try {
-    const sheetNames = await getSheetNames();
-    candidates = resolveMonthSheetCandidates(sheetNames, year, monthIndex);
-  } catch(_) {}
-
-  candidates = [...new Set([...candidates, ...monthSheetCandidates(year, monthIndex)])];
+  const candidates = monthSheetCandidates(year, monthIndex);
   let lastError = null;
   for(const name of candidates) {
     try {

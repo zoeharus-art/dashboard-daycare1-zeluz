@@ -243,7 +243,6 @@ function testarAlarme() {
 | Atualização automática (sucesso) | 2 minutos |
 | Tentativa após erro | 30 segundos |
 | Cache offline | 24 horas |
-| Cache auxiliar de nomes de abas | 6 horas |
 
 Para mudar os intervalos, no `index.html`:
 ```javascript
@@ -384,7 +383,7 @@ function preencherPeriodo() {
 | Web Audio API | Toca o som do alarme no navegador |
 | localStorage | Salva cache dos dados (funciona offline por 24h) |
 | Heurística de nomes de abas | Tenta localizar a aba correta mesmo com pequenas variacoes de nome |
-| localStorage | Salva cache auxiliar usado na releitura das abas |
+| Heurística de nomes de abas | Tenta localizar a aba correta mesmo com pequenas variacoes de nome |
 | sessionStorage | Controla quais alarmes já tocaram na sessão |
 | Intl.DateTimeFormat | Mantém horário de Brasília correto em qualquer computador |
 | Google Fonts (Poppins) | Tipografia (precisa de internet) |
@@ -417,7 +416,7 @@ function preencherPeriodo() {
 | Alarme não toca | Navegador bloqueou áudio automático | Clique em qualquer parte da página antes do horário do alarme |
 | Datas não encontradas | Formato extremo ou valor invalido | Prefira `DD/MM/AAAA`; o dashboard tambem aceita `DD/MM/AA` e `DD-MM-AAAA HH:MM` |
 | Acento na coluna não reconhecido | Encoding | O dashboard trata acentos, espacos extras e variacoes comuns automaticamente |
-| Mes nao abre | Nome da aba mudou | Clique em `🔄 Atualizar`; o dashboard tenta redescobrir os nomes reais das abas |
+| Mes nao abre | Nome da aba mudou | Clique em `🔄 Atualizar`; o dashboard tenta os nomes candidatos conhecidos para a aba |
 | Bloco mostra `1` no lugar do nome | A planilha usou flag em vez do nome e o nome-base veio em outra coluna | O dashboard agora tenta usar a coluna-base anterior a `Data` ou colunas como `Nomes`/`Matriculados` |
 | Logo com muito espaço em branco | PNG com padding transparente | Ajuste `height` do `.logo-wrap` e `margin-top` do `.logo-img` |
 
@@ -467,6 +466,6 @@ Desenvolvido com Claude Code (Anthropic)
 | Fev/2026 | v2 | Duas abas (Visão Geral + Rotinas), alarme, cache offline |
 | Fev/2026 | v3 | Redesign premium — cores por cuidado, animações, logo maior, slogan full-width, frase de destaque, alarme 5 min antes, footer ∞ |
 | Fev/2026 | v4 | **Novo logo** Wordmark 24 (dourado, fundo transparente) · **Header azul profundo** · **Grade 4 colunas** · **Nova ordem dos blocos** · Troca de Coleira → cor verde (vet) · **Hóspedes com Restrições**: listras diagonais animadas + brilho pulsante · **Frase do dia** 20px centralizada com glow dourado · Vocabulário Zêluz nas frases (FILHOts, peludinhos) · Alarme dispara **5 min antes** com mensagem atualizada · **Botão ⏰ Testar Alarme** · Tabs com espaçamento mínimo |
-| 28/02/2026 | v5 | Correcao estrutural da leitura da planilha: descoberta automatica dos nomes reais das abas mensais, cache da lista de abas, normalizacao ampliada de datas, suporte a aliases de colunas, fallback para flags (`1`, `Sim`, `OK`, etc.), criacao automatica de blocos para colunas nao mapeadas, diagnostico atualizado, teste local `tests/dashboard-regression.js` e documentacao consolidada |
+| 28/02/2026 | v5 | Correcao estrutural da leitura da planilha: ampliacao dos nomes candidatos das abas mensais, normalizacao ampliada de datas, suporte a aliases de colunas, fallback para flags (`1`, `Sim`, `OK`, etc.), criacao automatica de blocos para colunas nao mapeadas, diagnostico atualizado, teste local `tests/dashboard-regression.js` e documentacao consolidada |
 | 01/03/2026 | v6 | Varredura tecnica da primeira ate a ultima aba da planilha publica; ajuste do nome-base do peludinho pela coluna anterior a `Data`; exclusao dessa coluna dos blocos dinamicos; suporte a horarios com `;`; ampliacao do fallback para abas antigas sem ano ou com espaco inicial; regressao atualizada com casos reais da planilha |
 | 01/03/2026 | docs | Documentada oficialmente a troca da assinatura/branding de `Inteligência Criativa` para `Kairós`, a varredura completa das abas reais e a regra operacional de salvar/gerar backup a cada atualizacao grande |

@@ -184,16 +184,10 @@ function run() {
   assert(context.normalizeDateValue('15/03/26') === '15/03/2026', 'Normalizacao de data com ano curto falhou');
   assert(context.normalizeDateValue('15-03-2026 00:00') === '15/03/2026', 'Normalizacao de data com horario falhou');
 
-  const resolved = context.resolveMonthSheetCandidates(
-    ['2026 DayCare Fevereiro', 'DayCare Marco', ' 2024 DayCare Janeiro', '2026 Day Care Marco'],
-    2026,
-    2
-  );
-  assert(resolved.includes('2026 Day Care Marco') || resolved.includes('2026 Marco'), 'Resolucao automatica do nome da aba falhou');
-
   const candidates = context.monthSheetCandidates(2024, 0);
   assert(candidates.includes(' 2024 DayCare Janeiro'), 'Fallback com espaco inicial no nome da aba falhou');
   assert(candidates.includes('DayCare Janeiro'), 'Fallback para aba sem ano falhou');
+  assert(context.monthSheetCandidates(2026, 2).includes('2026 DayCare Março'), 'Fallback principal da aba do mes falhou');
 
   console.log('Dashboard regression tests: OK');
 }
