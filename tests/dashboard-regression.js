@@ -1,3 +1,19 @@
+/*
+ * Rede de seguranca do dashboard da TV (Day Care).
+ *
+ * Carrega o <script> REAL do index.html num sandbox e roda as funcoes de verdade
+ * contra linhas escritas como a planilha escreve -- com os erros de digitacao que ela
+ * tem ("Aulunos com restricoes" com o acento errado, "Festa na Zeluz - Auniversario)")
+ * e com os acentos que ja quebraram bloco ("Hora Saida Cedo").
+ *
+ * Uso:  node tests/dashboard-regression.js
+ * Sai 0 se tudo passa, 1 se algo falha.
+ *
+ * NOTA: a versao anterior deste arquivo testava rowsForSelectedDate/getRenderableBlocks,
+ * que sairam do index.html no commit "Restaura original + corrige bug de marco" -- o
+ * teste ficou quebrado desde entao. Este cobre o codigo que existe hoje.
+ */
+
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -6,190 +22,121 @@ const projectRoot = path.resolve(__dirname, '..');
 const htmlPath = path.join(projectRoot, 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const scriptMatch = html.match(/<script>([\s\S]*)<\/script>\s*<\/body>/);
-
-if (!scriptMatch) {
-  throw new Error('Nao foi possivel localizar o <script> principal em index.html');
-}
-
+if (!scriptMatch) throw new Error('Nao foi possivel localizar o <script> principal em index.html');
 const source = scriptMatch[1].replace(/\binit\(\);\s*$/, '');
 
-function createStorage() {
-  const store = Object.create(null);
-  return {
-    getItem(key) {
-      return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null;
-    },
-    setItem(key, value) {
-      store[key] = String(value);
-    },
-    removeItem(key) {
-      delete store[key];
-    },
-    clear() {
-      Object.keys(store).forEach(key => delete store[key]);
-    },
-  };
-}
-
-function createFakeElement() {
-  return {
-    textContent: '',
-    title: '',
-    innerHTML: '',
-    style: {},
-    disabled: false,
-    className: '',
-    classList: {
-      toggle() {},
-      add() {},
-      remove() {},
-    },
-  };
+let pass = 0, fail = 0;
+const fails = [];
+function check(nome, cond, detalhe) {
+  if (cond) { pass++; console.log('  ok   ' + nome); }
+  else { fail++; fails.push(nome + (detalhe ? ' -- ' + detalhe : '')); console.log('  FALHA ' + nome + (detalhe ? ' -- ' + detalhe : '')); }
 }
 
 function createContext() {
+  const noop = () => {};
+  const elemento = {
+    textContent: '', innerHTML: '', style: {},
+    classList: { add: noop, remove: noop, toggle: noop },
+    appendChild: noop, addEventListener: noop,
+  };
   const context = {
     console,
-    Date,
-    Math,
-    JSON,
-    Intl,
-    Array,
-    Object,
-    String,
-    Number,
-    Boolean,
-    RegExp,
-    Promise,
-    Map,
-    Set,
-    fetch: async () => ({
-      ok: true,
-      json: async () => ({ unixtime: Math.floor(Date.now() / 1000) }),
-    }),
-    setTimeout: () => 1,
-    clearTimeout: () => {},
-    setInterval: () => 1,
-    clearInterval: () => {},
-    localStorage: createStorage(),
-    sessionStorage: createStorage(),
-    confirm: () => true,
-    alert: () => {},
-    AudioContext: function AudioContext() {},
-    webkitAudioContext: function WebkitAudioContext() {},
-    window: {},
+    localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
     document: {
-      head: { appendChild() {} },
-      createElement() {
-        return {
-          parentNode: null,
-          remove() {},
-          set src(value) { this._src = value; },
-          get src() { return this._src; },
-        };
-      },
-      getElementById() {
-        return createFakeElement();
-      },
-      querySelector() {
-        return null;
-      },
+      getElementById: () => elemento,
+      querySelector: () => elemento,
+      querySelectorAll: () => [],
+      createElement: () => elemento,
+      head: { appendChild: noop },
+      body: elemento,
+      addEventListener: noop,
     },
+    setInterval: () => 0,
+    setTimeout: () => 0,
+    clearInterval: noop,
+    fetch: () => Promise.reject(new Error('sem rede no teste')),
+    navigator: {},
+    location: { href: '' },
+    Intl, Date, JSON, Math, String, Number, Object, Array, RegExp, Promise,
+    isNaN, parseInt, parseFloat,
   };
-
   context.window = context;
   vm.createContext(context);
   vm.runInContext(source, context);
   return context;
 }
 
-function setSelectedDate(context, year, month, day) {
-  vm.runInContext(`selectedDate = new Date(${year}, ${month}, ${day});`, context);
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
+// BLOCKS e `const`: so da para alcancar rodando outra expressao no MESMO contexto.
+function rodarBloco(context, id, linhas) {
+  context.__linhas = linhas;
+  const saida = vm.runInContext(
+    'JSON.stringify((function(){var b=BLOCKS.find(function(x){return x.id===' + JSON.stringify(id) + '});' +
+    'if(!b) return null; return b.fn(__linhas);})())', context);
+  return JSON.parse(saida);
 }
 
 function run() {
+  console.log('== Dashboard da TV -- rede de seguranca ==\n');
   const context = createContext();
 
-  const febRows = [
-    { Data: '15/02/2026', Aulunos: 'Thor', Banho: 'Thor', 'Hora Banho': '10:30', 'Cliente Novo': '1', Outros: 'Obs fevereiro' },
-    { Data: '15/02/2026', Aulunos: 'Luna', Avaliacao: '1', Horario: '13:00', Passeio: '1', 'Hora Passeio': '15:00' },
-    { Data: '16/02/2026', Aulunos: 'Mel', Vermifugo: '1' },
+  // Linhas como a planilha do Day Care realmente escreve.
+  const linhas = [
+    { Data: '26/08/2026', 'Festa na Zêluz - Auniversário)': 'Valentina - SRD' },
+    { Data: '26/08/2026', 'Aulunos com restriçóes': 'Toshi/Shiba Inu - Bolo' },
+    { Data: '26/08/2026', 'Peludinho que sairá cedo': 'Kako - Lhasa', 'Hora Saída Cedo': '15:00' },
+    { Data: '26/08/2026', Banho: 'Hannah Clara Of Zoe Harus/West Terrier', 'Hora Banho': '10:00' },
+    { Data: '26/08/2026', 'Hóspedes com Restrições': 'Ragnar - Restrição a Tudo' },
   ];
 
-  const marRows = [
-    { Data: '15-03-2026 00:00', Alunos: 'Kako', 'Peludinho que saira cedo': 'Kako', 'Hora Saida Cedo': '08h15', Aniversariante: 'Kako', Observacoes: 'Texto livre' },
-    { Data: '15/03/26', Nome: 'Nina', 'Hospedes com Restricao': 'banana', 'Hidratacao de Patinha e Focinho': '1', 'Horario Banho': '11:05', Banho: 'Nina' },
-    { Data: '15/03/2026', Nome: 'Pipoca', 'Consulta Veterinario': 'Pipoca', 'Hora Vet': '14:10', 'Novo Cliente': '1', 'Obs 2': 'segundo texto' },
-  ];
+  console.log('Blocos que faltavam (Adriana, 25/ago/2026):');
+  {
+    const festa = rodarBloco(context, 'festa', linhas);
+    check('bloco "Festa na Zeluz" existe', festa !== null);
+    check('a festa da Valentina aparece', !!festa && festa.length === 1 && /Valentina/.test(festa[0].name), JSON.stringify(festa));
 
-  const legacyRows = [
-    { Nomes: 'Batata', Data: '15/05/2026', Avulso: '1', 'Hora Banho': '13;30', Aulunos: '1' },
-    { 'para te da': 'Belinha', Data: '15/05/2026', 'Cliente Novo': '1', Aulunos: '1' },
-    { '45030.0': 'Adam Poodle', Data: '15/05/2026', Avulso: '1', Aulunos: '1' },
-  ];
+    const aul = rodarBloco(context, 'aulrestr', linhas);
+    check('bloco "Aulunos com Restricoes" existe', aul !== null);
+    check('acha a coluna apesar do erro de digitacao da planilha', !!aul && aul.length === 1 && /Toshi/.test(aul[0].name), JSON.stringify(aul));
+  }
+  console.log('');
 
-  setSelectedDate(context, 2026, 1, 15);
-  const febSelected = context.rowsForSelectedDate(febRows);
-  const febBlocks = context.getRenderableBlocks(febSelected);
-  const passeioBlock = febBlocks.find(block => block.title === 'Passeio');
-  assert(passeioBlock, 'Coluna dinamica "Passeio" nao foi criada');
-  const passeioEntry = passeioBlock.fn(febSelected)[0];
-  assert(passeioEntry && passeioEntry.name === 'Luna', 'Fallback do nome em "Passeio" falhou');
-  assert(passeioEntry.time === '15:00', 'Horario dinamico de "Passeio" nao foi reconhecido');
+  console.log('Bloco que nunca funcionou -- "Peludinho que Saira Cedo":');
+  {
+    // Procurava a coluna com includes('saida') SEM tirar o acento, e a planilha escreve
+    // "Hora Saida Cedo" com acento. Nunca achava: bloco vazio e alarme mudo.
+    const sai = rodarBloco(context, 'saindo', linhas);
+    check('acha o nome mesmo com acento na coluna', !!sai && sai.length === 1 && /Kako/.test(sai[0].name), JSON.stringify(sai));
+    check('traz a HORA (e ela que faz o alarme tocar)', !!sai && sai[0].time === '15:00', JSON.stringify(sai));
+    check('o codigo tira o acento antes de procurar', /_strip\(k\)\.toLowerCase\(\)\.includes\('saida'\)/.test(html));
+  }
+  console.log('');
 
-  const clienteNovoBlock = febBlocks.find(block => block.id === 'novo');
-  assert(clienteNovoBlock, 'Bloco "Cliente Novo" nao foi encontrado');
-  assert(clienteNovoBlock.fn(febSelected)[0].name === 'Thor', 'Flag "Cliente Novo" nao caiu no nome principal do peludinho');
+  console.log('O que o app lanca chega na TV:');
+  {
+    const banho = rodarBloco(context, 'banho', linhas);
+    check('banho lancado pelo app aparece', !!banho && banho.length === 1 && /Hannah Clara/.test(banho[0].name), JSON.stringify(banho));
+    check('com o horario junto', !!banho && banho[0].time === '10:00', JSON.stringify(banho));
+    const rest = rodarBloco(context, 'restricao', linhas);
+    check('hospede com restricao continua funcionando', !!rest && rest.length === 1 && /Ragnar/.test(rest[0].name), JSON.stringify(rest));
+  }
+  console.log('');
 
-  setSelectedDate(context, 2026, 2, 15);
-  const marSelected = context.rowsForSelectedDate(marRows);
-  const marBlocks = context.getRenderableBlocks(marSelected);
+  console.log('A TV precisa RELER a planilha (o banho da Hannah que nao apareceu):');
+  {
+    // O relogio de 2 minutos chamava loadData(), mas a primeira linha era
+    //   if(mem[key] && mem[key].length){ anyOk=true; continue; }
+    // -- o mes ja estava na memoria e ele saia sem buscar nada. A TV lia a planilha
+    // UMA vez, quando a pagina abria, e ficava com aquilo o resto do dia.
+    check('o mes que esta na tela nao e pulado pela memoria',
+      /if\(key!==keyAtual && mem\[key\] && mem\[key\]\.length\)/.test(html));
+    check('existe a nocao de "mes da tela" (keyAtual)', /const keyAtual=`\$\{y\}-\$\{m\}`/.test(html));
+    check('o relogio de recarga continua em 2 minutos', /const REFRESH_OK\s*=\s*120;/.test(html));
+  }
+  console.log('');
 
-  const saidaBlock = marBlocks.find(block => block.id === 'saindo');
-  assert(saidaBlock && saidaBlock.fn(marSelected)[0].time === '08h15', 'Alias de "Saida cedo" falhou');
-
-  const restricaoBlock = marBlocks.find(block => block.id === 'restricao');
-  assert(restricaoBlock && restricaoBlock.fn(marSelected)[0].name === 'banana', 'Alias de "Restricoes" falhou');
-
-  const vetBlock = marBlocks.find(block => block.id === 'vet');
-  assert(vetBlock && vetBlock.fn(marSelected)[0].time === '14:10', 'Alias de "Veterinario" falhou');
-
-  const hidratBlock = marBlocks.find(block => block.id === 'hidrat');
-  assert(hidratBlock && hidratBlock.fn(marSelected)[0].name === 'Nina', 'Fallback do nome em "Hidratacao" falhou');
-
-  const aniverBlock = marBlocks.find(block => block.id === 'aniver');
-  assert(aniverBlock && aniverBlock.fn(marSelected)[0].name === 'Kako', 'Alias de "Aniversariante" falhou');
-
-  const outros2Block = marBlocks.find(block => block.id === 'outros2');
-  assert(outros2Block && outros2Block.fn(marSelected)[0].name === 'segundo texto', 'Alias de "Obs 2" falhou');
-
-  setSelectedDate(context, 2026, 4, 15);
-  const legacySelected = context.rowsForSelectedDate(legacyRows);
-  const legacyBlocks = context.getRenderableBlocks(legacySelected);
-  assert(!legacyBlocks.some(block => block.title === 'Nomes' || block.title === 'para te da' || block.title === '45030.0'), 'Coluna-base de nome nao deve virar bloco dinamico');
-
-  const legacyAvulso = legacyBlocks.find(block => block.id === 'avulso');
-  assert(legacyAvulso && legacyAvulso.fn(legacySelected)[0].name === 'Batata', 'Fallback do nome pelo campo anterior a Data falhou');
-  assert(context.parseHora('13;30').min === 30, 'Parse de horario com ponto e virgula falhou');
-
-  const legacyNovo = legacyBlocks.find(block => block.id === 'novo');
-  assert(legacyNovo && legacyNovo.fn(legacySelected)[0].name === 'Belinha', 'Fallback do nome pelo cabecalho quebrado falhou');
-
-  assert(legacyAvulso && legacyAvulso.fn(legacySelected)[1].name === 'Adam Poodle', 'Fallback do nome pelo cabecalho numerico falhou');
-
-  assert(context.normalizeDateValue('15/03/26') === '15/03/2026', 'Normalizacao de data com ano curto falhou');
-  assert(context.normalizeDateValue('15-03-2026 00:00') === '15/03/2026', 'Normalizacao de data com horario falhou');
-
-  const candidates = context.monthSheetCandidates(2024, 0);
-  assert(candidates.includes(' 2024 DayCare Janeiro'), 'Fallback com espaco inicial no nome da aba falhou');
-  assert(candidates.includes('DayCare Janeiro'), 'Fallback para aba sem ano falhou');
-  assert(context.monthSheetCandidates(2026, 2).includes('2026 DayCare Março'), 'Fallback principal da aba do mes falhou');
-
-  console.log('Dashboard regression tests: OK');
+  console.log('== Resultado: ' + pass + ' ok, ' + fail + ' falha(s) ==');
+  if (fail) { console.log('\nFalhas:'); fails.forEach((f) => console.log('  - ' + f)); }
+  process.exit(fail ? 1 : 0);
 }
 
 run();

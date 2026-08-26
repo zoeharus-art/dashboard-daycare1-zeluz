@@ -1094,6 +1094,9 @@ const BLOCKS = [
       name: v(r,'Hóspedes com Restrições'), time: ''
     })) },
 
+  { id:'aulrestr',  title:'Aulunos com Restrições',      icon:'🚫', color:'alerta',
+    fn: rows => rows.filter(r=>hasLike(r,'aulunos com restri')).map(r=>({ name:vLike(r,'aulunos com restri'), time:'' })) },
+
   { id:'banho',     title:'Banho',                        icon:'🛁', color:'banho',   special:'banho',
     fn: rows => rows.filter(r=>has(r,'Banho')).map(r=>({ name:v(r,'Banho'), time:v(r,'Hora Banho') })) },
 
@@ -1102,8 +1105,8 @@ const BLOCKS = [
 
   { id:'saindo',    title:'Peludinho que Sairá Cedo',    icon:'🚶', color:'amarelo',
     fn: rows => {
-      const kP = r => Object.keys(r).find(k=>k.toLowerCase().includes('peludinho'));
-      const kH = r => Object.keys(r).find(k=>k.toLowerCase().includes('hora') && k.toLowerCase().includes('saida'));
+      const kP = r => Object.keys(r).find(k=>_strip(k).toLowerCase().includes('peludinho'));
+      const kH = r => Object.keys(r).find(k=>_strip(k).toLowerCase().includes('hora') && _strip(k).toLowerCase().includes('saida'));
       return rows
         .filter(r=>{ const k=kP(r); return k&&r[k]&&r[k]!=='0'; })
         .map(r=>({ name: r[kP(r)]||'', time: r[kH(r)]||'' }));
@@ -1143,6 +1146,9 @@ const BLOCKS = [
   { id:'aniver',    title:'AUniversariante',              icon:'🎂', color:'rosa',
     fn: rows => rows.filter(r=>has(r,'AUniversariante')).map(r=>({ name:v(r,'AUniversariante'), time:'' })) },
 
+  { id:'festa',     title:'Festa na Zêluz',              icon:'🎉', color:'rosa',
+    fn: rows => rows.filter(r=>hasLike(r,'festa')).map(r=>({ name:vLike(r,'festa'), time:'' })) },
+
   { id:'outros',    title:'Outros',                      icon:'📝', color:'amarelo',
     fn: rows => rows.filter(r=>has(r,'Outros')).map(r=>({ name:v(r,'Outros'), time:'' })) },
 
@@ -1166,6 +1172,14 @@ const v = (r,k) => {
   return match ? String(r[match]).trim() : '';
 };
 const has    = (r,k) => { const x=v(r,k); return x!==''&&x!=='0'; };
+// Acha a coluna que CONTÉM o pedaço (sem acento, sem caixa). Serve para nomes que a
+// planilha escreve de um jeito e a gente lembra de outro.
+const vLike = (r,pedaco) => {
+  const p=_strip(pedaco).toLowerCase();
+  const k=Object.keys(r).find(rk=>_strip(rk).toLowerCase().includes(p));
+  return k ? String(r[k]).trim() : '';
+};
+const hasLike = (r,pedaco) => { const x=vLike(r,pedaco); return x!==''&&x!=='0'; };
 const nameOr = (r,k) => { const x=v(r,k); return (x==='1'||x.toLowerCase()==='sim') ? v(r,'Aulunos') : x; };
 
 // ════════════════════════════════════════════════════════════
@@ -1297,9 +1311,12 @@ async function loadData() {
   const months=[{y,m}, m>0?{y,m:m-1}:{y:y-1,m:11}, m<11?{y,m:m+1}:{y:y+1,m:0}];
 
   let anyOk=false, anyErr=false;
+  const keyAtual=`${y}-${m}`;                     // o mês que está na tela
   for(const {y:yr,m:mo} of months) {
     const key=`${yr}-${mo}`;
-    if(mem[key] && mem[key].length){ anyOk=true; continue; }
+    // O mês da tela é relido a cada volta do relógio — é ele que muda durante o dia.
+    // Os vizinhos só existem para a navegação e podem vir da memória.
+    if(key!==keyAtual && mem[key] && mem[key].length){ anyOk=true; continue; }
     try {
       const nome=`${yr} DayCare ${MESES[mo]}`;
       let rows;
