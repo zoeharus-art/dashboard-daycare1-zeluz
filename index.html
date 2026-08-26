@@ -59,6 +59,17 @@
       --verde-e:  rgba(30,125,75,.08);
 
       /* ─── Rosa aniversariante ─── */
+      /* Aulunos com Restrições — laranja queimado. Restrição de ALUNO, não de hóspede:
+         o vermelho continua sendo só de quem está dormindo na casa. */
+      --coral-h:  #E2622B;
+      --coral-l:  #FDEDE4;
+      --coral-e:  rgba(226,98,43,.08);
+
+      /* Festa na Zêluz — turquesa. Aniversário (rosa) é a data; festa é o evento. */
+      --festa-h:  #0F9B8E;
+      --festa-l:  #E2F5F3;
+      --festa-e:  rgba(15,155,142,.08);
+
       --rosa-h:   #C2185B;
       --rosa-l:   #FCE4EC;
       --rosa-e:   rgba(194,24,91,.08);
@@ -317,6 +328,8 @@
     .geral-card.amarelo { border-top-color: var(--ouro-h);   animation-delay: .20s; }
     .geral-card.verde   { border-top-color: var(--verde-h);  animation-delay: .24s; }
     .geral-card.rosa    { border-top-color: var(--rosa-h);   animation-delay: .28s; }
+    .geral-card.coral   { border-top-color: var(--coral-h);  animation-delay: .30s; }
+    .geral-card.festa   { border-top-color: var(--festa-h);  animation-delay: .32s; }
     .geral-card.futuro  { border-top-color: #ddd; opacity:.35; animation-delay: .32s; }
 
     .geral-icon  { font-size:30px; }
@@ -1094,8 +1107,11 @@ const BLOCKS = [
       name: v(r,'Hóspedes com Restrições'), time: ''
     })) },
 
-  { id:'aulrestr',  title:'Aulunos com Restrições',      icon:'🚫', color:'alerta',
+  { id:'aulrestr',  title:'Aulunos com Restrições',      icon:'🎒', color:'coral',
     fn: rows => rows.filter(r=>hasLike(r,'aulunos com restri')).map(r=>({ name:vLike(r,'aulunos com restri'), time:'' })) },
+
+  { id:'festa',     title:'Festa na Zêluz',              icon:'🎉', color:'festa',
+    fn: rows => rows.filter(r=>hasLike(r,'festa')).map(r=>({ name:vLike(r,'festa'), time:'' })) },
 
   { id:'banho',     title:'Banho',                        icon:'🛁', color:'banho',   special:'banho',
     fn: rows => rows.filter(r=>has(r,'Banho')).map(r=>({ name:v(r,'Banho'), time:v(r,'Hora Banho') })) },
@@ -1145,9 +1161,6 @@ const BLOCKS = [
   // ══ Final: Especial + Outros ═══════════════════════════
   { id:'aniver',    title:'AUniversariante',              icon:'🎂', color:'rosa',
     fn: rows => rows.filter(r=>has(r,'AUniversariante')).map(r=>({ name:v(r,'AUniversariante'), time:'' })) },
-
-  { id:'festa',     title:'Festa na Zêluz',              icon:'🎉', color:'rosa',
-    fn: rows => rows.filter(r=>hasLike(r,'festa')).map(r=>({ name:vLike(r,'festa'), time:'' })) },
 
   { id:'outros',    title:'Outros',                      icon:'📝', color:'amarelo',
     fn: rows => rows.filter(r=>has(r,'Outros')).map(r=>({ name:v(r,'Outros'), time:'' })) },

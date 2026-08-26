@@ -134,6 +134,36 @@ function run() {
   }
   console.log('');
 
+  console.log('Cada bloco com a sua cara (Adriana, 26/ago -- "ninguem ira guardar"):');
+  {
+    const cor = (id) => {
+      const m = html.match(new RegExp("id:'" + id + "'[^}]*?color:'([a-z]+)'"));
+      return m ? m[1] : null;
+    };
+    const icone = (id) => {
+      const m = html.match(new RegExp("id:'" + id + "'[^}]*?icon:'([^']+)'"));
+      return m ? m[1] : null;
+    };
+    check('hospedes e aulunos com restricao tem CORES diferentes',
+      cor('restricao') !== cor('aulrestr'), cor('restricao') + ' vs ' + cor('aulrestr'));
+    check('hospedes e aulunos com restricao tem ICONES diferentes',
+      icone('restricao') !== icone('aulrestr'), icone('restricao') + ' vs ' + icone('aulrestr'));
+    check('aniversariante e festa tem cores diferentes',
+      cor('aniver') !== cor('festa'), cor('aniver') + ' vs ' + cor('festa'));
+    // toda cor usada precisa existir no CSS, senao o bloco fica sem a faixa colorida
+    const usadas = [...html.matchAll(/color:'([a-z]+)'/g)].map(m => m[1]);
+    const semClasse = [...new Set(usadas)].filter(c => c !== 'futuro' && !new RegExp('\\.geral-card\\.' + c + '\\s*\\{').test(html));
+    check('toda cor de bloco existe no CSS', semClasse.length === 0, semClasse.join(', '));
+    // ordem pedida: hospedes -> aulunos -> festa -> banho
+    const ordem = [...html.matchAll(/id:'([a-z0-9]+)',\s*title:/g)].map(m => m[1]);
+    const pos = (id) => ordem.indexOf(id);
+    check('a ordem e hospedes -> aulunos -> festa -> banho',
+      pos('restricao') < pos('aulrestr') && pos('aulrestr') < pos('festa') && pos('festa') < pos('banho'),
+      ordem.slice(0, 5).join(' > '));
+    check('nenhum bloco aparece duas vezes', new Set(ordem).size === ordem.length, ordem.join(','));
+  }
+  console.log('');
+
   console.log('== Resultado: ' + pass + ' ok, ' + fail + ' falha(s) ==');
   if (fail) { console.log('\nFalhas:'); fails.forEach((f) => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
