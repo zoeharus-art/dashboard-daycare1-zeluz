@@ -144,8 +144,12 @@ function run() {
       const m = html.match(new RegExp("id:'" + id + "'[^}]*?icon:'([^']+)'"));
       return m ? m[1] : null;
     };
-    check('hospedes e aulunos com restricao tem CORES diferentes',
+    // Restricao e vermelha nos dois de proposito (Adriana, 26/ago): o que separa e o
+    // MOVIMENTO -- hospede pulsa, auluno anda em faixa zebrada.
+    check('hospedes e aulunos tem tratamentos visuais diferentes',
       cor('restricao') !== cor('aulrestr'), cor('restricao') + ' vs ' + cor('aulrestr'));
+    check('o auluno usa faixa zebrada animada (nao pulso)', /@keyframes faixaAndando/.test(html));
+    check('o pulso continua exclusivo do hospede', /\.block\.alerta[^]*?glowRed/.test(html));
     check('hospedes e aulunos com restricao tem ICONES diferentes',
       icone('restricao') !== icone('aulrestr'), icone('restricao') + ' vs ' + icone('aulrestr'));
     check('aniversariante e festa tem cores diferentes',
@@ -161,6 +165,21 @@ function run() {
       pos('restricao') < pos('aulrestr') && pos('aulrestr') < pos('festa') && pos('festa') < pos('banho'),
       ordem.slice(0, 5).join(' > '));
     check('nenhum bloco aparece duas vezes', new Set(ordem).size === ordem.length, ordem.join(','));
+  }
+  console.log('');
+
+  console.log('Todo bloco colorido tem o esqueleto completo do DS:');
+  {
+    // Faltou isso na primeira tentativa: eu criei so a cor da borda e os dois blocos
+    // novos sairam sem cara nenhuma. Todo bloco precisa das quatro regras.
+    ['aulrestr', 'festa', 'banho', 'vet', 'adapt'].forEach((cor) => {
+      ['block-header', 'block-body', 'block-entry'].forEach((parte) => {
+        const re = new RegExp('\\.block\\.' + cor + '\\s+\\.' + parte + '\\s*\\{');
+        check(cor + ' tem regra para .' + parte, re.test(html));
+      });
+    });
+    check('o relevo 3D vale para todos os cabecalhos', /\.block-header \{ box-shadow: inset/.test(html));
+    check('a festa brilha de longe em longe (nao pisca sem parar)', /@keyframes brilhoFesta/.test(html));
   }
   console.log('');
 

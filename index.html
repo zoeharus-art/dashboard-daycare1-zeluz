@@ -61,9 +61,10 @@
       /* ─── Rosa aniversariante ─── */
       /* Aulunos com Restrições — laranja queimado. Restrição de ALUNO, não de hóspede:
          o vermelho continua sendo só de quem está dormindo na casa. */
-      --coral-h:  #E2622B;
-      --coral-l:  #FDEDE4;
-      --coral-e:  rgba(226,98,43,.08);
+      /* Aulunos com Restrições — MESMO vermelho do alerta; o que muda é o movimento
+         (faixa zebrada em vez de pulso). Ver o bloco .block.aulrestr no CSS. */
+      --aulr-l:   #FDECEC;
+      --aulr-e:   rgba(198,40,40,.09);
 
       /* Festa na Zêluz — turquesa. Aniversário (rosa) é a data; festa é o evento. */
       --festa-h:  #0F9B8E;
@@ -328,7 +329,7 @@
     .geral-card.amarelo { border-top-color: var(--ouro-h);   animation-delay: .20s; }
     .geral-card.verde   { border-top-color: var(--verde-h);  animation-delay: .24s; }
     .geral-card.rosa    { border-top-color: var(--rosa-h);   animation-delay: .28s; }
-    .geral-card.coral   { border-top-color: var(--coral-h);  animation-delay: .30s; }
+    .geral-card.aulrestr{ animation-delay: .30s; }
     .geral-card.festa   { border-top-color: var(--festa-h);  animation-delay: .32s; }
     .geral-card.futuro  { border-top-color: #ddd; opacity:.35; animation-delay: .32s; }
 
@@ -452,6 +453,111 @@
     .block.adapt .block-body   { background:var(--adapt-l); color:#4A2D80; }
     .block.adapt .block-entry  { background:var(--adapt-e); }
 
+
+    /* ═══ AULUNOS COM RESTRIÇÕES e FESTA NA ZÊLUZ ══════════════════════════════
+       Adriana, 26/ago/2026: "o design de Aulunos com restrições ficou horrível, não
+       está seguindo o nosso DS do dashboard, e a Festa também. Ele é super colorido,
+       interativo. Crie algo, coloque efeitos 3D, mas que seja BELO."
+       Eu tinha criado só a cor da borda — faltavam as quatro regras que todo bloco
+       daqui tem (header, corpo, linha, linha de banho), então os dois saíam sem cara
+       nenhuma. Aqui eles ganham o mesmo esqueleto dos outros MAIS o relevo: gradiente
+       em três paradas, luz no topo, sombra por dentro na base e ícone com sombra
+       projetada — o cartão parece levantado da mesa, não impresso nela. */
+
+    /* ─── Aulunos com Restrições — vermelho em faixa zebrada, andando devagar ─── */
+    .block.aulrestr {
+      box-shadow: 0 6px 24px rgba(198,40,40,.22), 0 2px 6px rgba(35,77,103,.10);
+    }
+    .block.aulrestr .block-header {
+      /* a faixa: vermelho fechado alternando com vermelho escuro, na diagonal */
+      background-color: #C62828;
+      background-image: repeating-linear-gradient(135deg,
+        rgba(0,0,0,0) 0 26px,
+        rgba(0,0,0,.22) 26px 52px);
+      background-size: 74px 74px;
+      animation: faixaAndando 3.4s linear infinite;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -14px 24px rgba(0,0,0,.16);
+    }
+    /* devagar de propósito: movimento que corre rápido cansa numa TV ligada o dia todo */
+    @keyframes faixaAndando { to { background-position: 74px 0; } }
+    .block.aulrestr .block-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.35));
+      animation: mochila 3.2s ease-in-out infinite;
+    }
+    @keyframes mochila {
+      0%,88%,100% { transform: translateY(0) rotate(0); }
+      92%          { transform: translateY(-3px) rotate(-7deg); }
+      96%          { transform: translateY(-1px) rotate(5deg); }
+    }
+    .block.aulrestr .block-body  { background: var(--aulr-l); color: #8E1B1B; }
+    .block.aulrestr .block-entry {
+      background: var(--aulr-e);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 2px rgba(142,27,27,.10);
+      border-left: 3px solid rgba(198,40,40,.55);
+    }
+    .block.aulrestr .banho-entry { background: transparent; }
+    /* no cartão de contagem a faixa também aparece, na borda de cima */
+    .geral-card.aulrestr {
+      border-top-color: transparent;
+      border-image: repeating-linear-gradient(135deg, #C62828 0 8px, #8E1B1B 8px 16px) 1;
+      border-top-width: 5px; border-top-style: solid;
+    }
+    .geral-card.aulrestr .geral-icon { filter: drop-shadow(0 3px 5px rgba(198,40,40,.45)); }
+
+    /* ─── Festa na Zêluz — turquesa com um brilho que atravessa, de longe em longe ─── */
+    .block.festa {
+      box-shadow: 0 6px 24px rgba(15,155,142,.26), 0 2px 6px rgba(35,77,103,.10);
+    }
+    .block.festa .block-header {
+      background: linear-gradient(160deg, #22C4B3 0%, #0F9B8E 52%, #0A7267 100%);
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.26);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -14px 24px rgba(0,0,0,.12);
+      position: relative;
+      overflow: hidden;
+    }
+    /* o brilho passa a cada 5s — festa é alegria, não alarme: nada de piscar sem parar */
+    .block.festa .block-header::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(115deg, transparent 34%, rgba(255,255,255,.38) 47%, transparent 60%);
+      transform: translateX(-130%);
+      animation: brilhoFesta 5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes brilhoFesta {
+      0%, 62% { transform: translateX(-130%); }
+      100%     { transform: translateX(130%); }
+    }
+    .block.festa .block-icon {
+      font-size: 24px;
+      filter: drop-shadow(0 3px 4px rgba(0,0,0,.3));
+      animation: confete 2.8s ease-in-out infinite;
+      position: relative; z-index: 1;
+    }
+    @keyframes confete {
+      0%,100% { transform: translateY(0) rotate(0) scale(1); }
+      30%      { transform: translateY(-4px) rotate(-10deg) scale(1.08); }
+      60%      { transform: translateY(-1px) rotate(9deg)  scale(1.03); }
+    }
+    .block.festa .block-title { position: relative; z-index: 1; }
+    .block.festa .block-count { position: relative; z-index: 1; }
+    .block.festa .block-body  { background: var(--festa-l); color: #0A5F57; }
+    .block.festa .block-entry {
+      background: var(--festa-e);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 2px rgba(10,114,103,.10);
+    }
+    .block.festa .banho-entry { background: transparent; }
+    .geral-card.festa .geral-icon { filter: drop-shadow(0 3px 5px rgba(15,155,142,.45)); }
+
+    /* ─── O relevo vale para TODOS: um conjunto só se lê bem se for parelho ─── */
+    .block-header { box-shadow: inset 0 1px 0 rgba(255,255,255,.30), inset 0 -12px 22px rgba(0,0,0,.10); }
+    .block-icon   { filter: drop-shadow(0 2px 3px rgba(0,0,0,.22)); }
+    .block-count  { text-shadow: 0 1px 2px rgba(0,0,0,.20); }
+    .geral-card   { box-shadow: 0 3px 16px rgba(35,77,103,.10), inset 0 1px 0 rgba(255,255,255,.9); }
     /* ─── ALERTA ESPECIAL: Hóspedes com Restrições ─── */
     @keyframes glowRed {
       0%,100% { box-shadow: 0 0 0 3px #FF1744, 0 6px 32px rgba(220,0,50,.45); }
@@ -1107,7 +1213,7 @@ const BLOCKS = [
       name: v(r,'Hóspedes com Restrições'), time: ''
     })) },
 
-  { id:'aulrestr',  title:'Aulunos com Restrições',      icon:'🎒', color:'coral',
+  { id:'aulrestr',  title:'Aulunos com Restrições',      icon:'🎒', color:'aulrestr',
     fn: rows => rows.filter(r=>hasLike(r,'aulunos com restri')).map(r=>({ name:vLike(r,'aulunos com restri'), time:'' })) },
 
   { id:'festa',     title:'Festa na Zêluz',              icon:'🎉', color:'festa',
