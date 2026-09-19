@@ -86,7 +86,7 @@ function run() {
     { Data: '26/08/2026', 'Peludinho que sairá cedo': 'Kako - Lhasa', 'Hora Saída Cedo': '15:00' },
     { Data: '26/08/2026', Banho: 'Hannah Clara Of Zoe Harus/West Terrier', 'Hora Banho': '10:00' },
     { Data: '26/08/2026', 'Hóspedes com Restrições': 'Ragnar - Restrição a Tudo' },
-    { Data: '26/08/2026', 'Medicação': 'Toshi/Shih Tzu (GOTAS NO OUVIDO, 2X AO DIA · NA BOLSA)' },
+    { Data: '26/08/2026', 'Medicação': 'Toshi/Shih Tzu (GOTAS NO OUVIDO, 2X AO DIA · NA BOLSA)', 'Hora Medicação': '09:30' },
   ];
 
   console.log('Blocos que faltavam (Adriana, 25/ago/2026):');
@@ -122,6 +122,27 @@ function run() {
     check('o remedio do Toshi aparece', !!med && med.length === 1 && /Toshi/.test(med[0].name), JSON.stringify(med));
     check('diz ONDE o remedio esta (na bolsa)', !!med && med.length === 1 && /NA BOLSA/.test(med[0].name), JSON.stringify(med));
     check('o bloco esta na lista de blocos da TV', /id:'medicacao'/.test(html));
+  }
+  console.log('');
+
+  console.log('Medicacao com HORARIO (Adriana, 19/set/2026 -- "precisa ter horario"):');
+  {
+    // A hora e o que faz o alarme tocar. Sem ela o remedio aparecia na tela e ninguem
+    // era avisado da hora de dar -- ao contrario do Banho e do Veterinario, que ja
+    // acendem o alarme cinco minutos antes.
+    const med = rodarBloco(context, 'medicacao', linhas);
+    check('traz a HORA da coluna "Hora Medicacao"', !!med && med.length === 1 && med[0].time === '09:30', JSON.stringify(med));
+    check('a hora nao esta mais fixada em vazio', !/id:'medicacao'[^]*?nameOr\(r,'Medicação'\), time:''/.test(html));
+    check('"Medicacao" e fonte de alarme, como Banho e Veterinario',
+      /nomeCol:'Medicação',\s*horaCol:'Hora Medicação'/.test(html));
+
+    // Sem a hora a linha continua valendo: a recepcao pode lancar o remedio antes de
+    // saber a hora, e o remedio nao pode sumir da TV por causa disso.
+    const semHora = rodarBloco(context, 'medicacao', [
+      { Data: '26/08/2026', 'Medicação': 'Repolho/Spitz (ANTIBIOTICO · NA RECEPCAO)' },
+    ]);
+    check('sem hora o remedio continua aparecendo', !!semHora && semHora.length === 1 && /Repolho/.test(semHora[0].name), JSON.stringify(semHora));
+    check('sem hora o campo fica vazio (e vai para o fim da fila)', !!semHora && semHora[0].time === '', JSON.stringify(semHora));
   }
   console.log('');
 

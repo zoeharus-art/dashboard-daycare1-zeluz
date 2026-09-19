@@ -876,6 +876,9 @@ const ALARM_SOURCES = [
   { nomeCol:'Veterinário',              horaCol:'Hora Veterinário', icon:'🩺', msg:'Consulta veterinária às'  },
   { nomeCol:'Avaliação',               horaCol:'Hora Avaliação',  icon:'📋', msg:'Avaliação às'   },
   { nomeCol:'Peludinho que saira cedo', horaCol:'Hora Saida Cedo', icon:'🚶', msg:'sai cedo às'    },
+  // Adriana, 19/set/2026: "sobre medicação... precisa ter horário". A hora é o que faz o
+  // alarme tocar — sem ela o remédio aparecia na tela e ninguém era avisado da hora de dar.
+  { nomeCol:'Medicação',               horaCol:'Hora Medicação',  icon:'💉', msg:'Medicação às'   },
 ];
 const TZ         = 'America/Sao_Paulo';
 
@@ -1244,8 +1247,11 @@ const BLOCKS = [
   // anotar. O que a recepção lança no app chega aqui com o remédio E COM O LUGAR —
   // na bolsa dele ou na recepção — porque quem vai dar a dose precisa saber onde
   // procurar sem ter de perguntar a ninguém.
+  // Adriana, 19/set/2026: "sobre medicação... precisa ter horário". A hora vem da coluna
+  // "Hora Medicação", ao lado da de Medicação, e faz duas coisas — põe o remédio na ordem
+  // do relógio dentro do bloco e acende o alarme na TV, como no Banho e no Veterinário.
   { id:'medicacao', title:'Medicação',                    icon:'💉', color:'vet',
-    fn: rows => rows.filter(r=>has(r,'Medicação')).map(r=>({ name:nameOr(r,'Medicação'), time:'' })) },
+    fn: rows => rows.filter(r=>has(r,'Medicação')).map(r=>({ name:nameOr(r,'Medicação'), time:v(r,'Hora Medicação') })) },
 
   { id:'coleira',   title:'Troca de Coleira',             icon:'🏷️', color:'vet',
     fn: rows => rows.filter(r=>has(r,'Troca de Coleira')).map(r=>({ name:nameOr(r,'Troca de Coleira'), time:'' })) },
