@@ -1240,6 +1240,13 @@ const BLOCKS = [
   { id:'carrap',    title:'Carrapaticida',                icon:'🔬', color:'vet',
     fn: rows => rows.filter(r=>has(r,'Carrapaticida')).map(r=>({ name:nameOr(r,'Carrapaticida'), time:'' })) },
 
+  // Adriana, 18/set/2026: o Toshi passou a tomar gotas no ouvido e não havia onde
+  // anotar. O que a recepção lança no app chega aqui com o remédio E COM O LUGAR —
+  // na bolsa dele ou na recepção — porque quem vai dar a dose precisa saber onde
+  // procurar sem ter de perguntar a ninguém.
+  { id:'medicacao', title:'Medicação',                    icon:'💉', color:'vet',
+    fn: rows => rows.filter(r=>has(r,'Medicação')).map(r=>({ name:nameOr(r,'Medicação'), time:'' })) },
+
   { id:'coleira',   title:'Troca de Coleira',             icon:'🏷️', color:'vet',
     fn: rows => rows.filter(r=>has(r,'Troca de Coleira')).map(r=>({ name:nameOr(r,'Troca de Coleira'), time:'' })) },
 

@@ -86,6 +86,7 @@ function run() {
     { Data: '26/08/2026', 'Peludinho que sairá cedo': 'Kako - Lhasa', 'Hora Saída Cedo': '15:00' },
     { Data: '26/08/2026', Banho: 'Hannah Clara Of Zoe Harus/West Terrier', 'Hora Banho': '10:00' },
     { Data: '26/08/2026', 'Hóspedes com Restrições': 'Ragnar - Restrição a Tudo' },
+    { Data: '26/08/2026', 'Medicação': 'Toshi/Shih Tzu (GOTAS NO OUVIDO, 2X AO DIA · NA BOLSA)' },
   ];
 
   console.log('Blocos que faltavam (Adriana, 25/ago/2026):');
@@ -108,6 +109,19 @@ function run() {
     check('acha o nome mesmo com acento na coluna', !!sai && sai.length === 1 && /Kako/.test(sai[0].name), JSON.stringify(sai));
     check('traz a HORA (e ela que faz o alarme tocar)', !!sai && sai[0].time === '15:00', JSON.stringify(sai));
     check('o codigo tira o acento antes de procurar', /_strip\(k\)\.toLowerCase\(\)\.includes\('saida'\)/.test(html));
+  }
+  console.log('');
+
+  console.log('Bloco novo -- "Medicacao" (Adriana, 18/set/2026):');
+  {
+    // O Toshi toma gotas no ouvido e nao havia onde anotar. O app escreve o remedio E
+    // o lugar (na bolsa dele ou na recepcao) numa coluna nova chamada "Medicacao" --
+    // com cedilha e til na planilha, entao a busca tem de tolerar acento.
+    const med = rodarBloco(context, 'medicacao', linhas);
+    check('bloco "Medicacao" existe', med !== null);
+    check('o remedio do Toshi aparece', !!med && med.length === 1 && /Toshi/.test(med[0].name), JSON.stringify(med));
+    check('diz ONDE o remedio esta (na bolsa)', !!med && med.length === 1 && /NA BOLSA/.test(med[0].name), JSON.stringify(med));
+    check('o bloco esta na lista de blocos da TV', /id:'medicacao'/.test(html));
   }
   console.log('');
 
