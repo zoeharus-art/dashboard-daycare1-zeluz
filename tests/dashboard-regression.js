@@ -87,6 +87,7 @@ function run() {
     { Data: '26/08/2026', Banho: 'Hannah Clara Of Zoe Harus/West Terrier', 'Hora Banho': '10:00' },
     { Data: '26/08/2026', 'Hóspedes com Restrições': 'Ragnar - Restrição a Tudo' },
     { Data: '26/08/2026', 'Medicação': 'Toshi/Shih Tzu (GOTAS NO OUVIDO, 2X AO DIA · NA BOLSA)', 'Hora Medicação': '09:30' },
+    { Data: '26/08/2026', 'Troca de Escova': 'Cookie/SRD (NA BOLSA)' },
   ];
 
   console.log('Blocos que faltavam (Adriana, 25/ago/2026):');
@@ -143,6 +144,19 @@ function run() {
     ]);
     check('sem hora o remedio continua aparecendo', !!semHora && semHora.length === 1 && /Repolho/.test(semHora[0].name), JSON.stringify(semHora));
     check('sem hora o campo fica vazio (e vai para o fim da fila)', !!semHora && semHora[0].time === '', JSON.stringify(semHora));
+  }
+  console.log('');
+
+  console.log('Bloco novo -- "Troca de Escova" (Adriana, 21/set/2026):');
+  {
+    // "a troca da escova tambem". A escova de dentes e prevencao e agora se lanca no
+    // dia, como a troca de coleira. Sem hora: o que importa e que foi trocada.
+    const esc = rodarBloco(context, 'escova', linhas);
+    check('bloco "Troca de Escova" existe', esc !== null);
+    check('a escova da Cookie aparece', !!esc && esc.length === 1 && /Cookie/.test(esc[0].name), JSON.stringify(esc));
+    check('diz ONDE a escova esta (na bolsa)', !!esc && esc.length === 1 && /NA BOLSA/.test(esc[0].name), JSON.stringify(esc));
+    check('nao traz hora (a escova nao tem horario)', !!esc && esc[0].time === '', JSON.stringify(esc));
+    check('o bloco esta na lista de blocos da TV', /id:'escova'/.test(html));
   }
   console.log('');
 

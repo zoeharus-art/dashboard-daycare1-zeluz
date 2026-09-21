@@ -1256,6 +1256,13 @@ const BLOCKS = [
   { id:'coleira',   title:'Troca de Coleira',             icon:'🏷️', color:'vet',
     fn: rows => rows.filter(r=>has(r,'Troca de Coleira')).map(r=>({ name:nameOr(r,'Troca de Coleira'), time:'' })) },
 
+  // Adriana, 21/set/2026: "a troca da escova também". A escova de dentes do FILHOt é
+  // prevenção, e agora a recepção lança no app como já lança a troca de coleira — vai
+  // parar na coluna "Troca de Escova" da planilha. Sem hora: o que importa é que foi
+  // trocada, não a que horas.
+  { id:'escova',    title:'Troca de Escova',              icon:'🪥', color:'banho',
+    fn: rows => rows.filter(r=>has(r,'Troca de Escova')).map(r=>({ name:nameOr(r,'Troca de Escova'), time:'' })) },
+
   { id:'hidrat',    title:'Hidratação Patinha e Focinho', icon:'💧', color:'banho',
     fn: rows => rows.filter(r=>has(r,'Hidratação patinha e Focinho')).map(r=>({ name:nameOr(r,'Hidratação patinha e Focinho'), time:'' })) },
 
