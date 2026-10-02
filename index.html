@@ -1341,6 +1341,9 @@ function init() {
   setInterval(updateClock, 1000);
   setInterval(tick, 1000);
   setInterval(checkAlarm, 10000);
+  // A caixa cheia rola sozinha (01-02/out/2026): na TV ninguém rola com o dedo.
+  setInterval(rolarCaixas, ROLA.intervaloMs);
+  ['wheel', 'touchstart', 'pointerdown'].forEach(t => document.addEventListener(t, marcarToqueCaixa, { passive: true }));
   updateDateLabel();
   switchTab('rotinas');
   loadData();
@@ -1780,6 +1783,50 @@ function buildBlock(b, entries, todo) {
       </div>
       <div class="block-body">${body}</div>
     </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  A CAIXA CHEIA ROLA SOZINHA (Adriana, 01-02/out/2026)
+// ════════════════════════════════════════════════════════════
+// "O banho dela não está aparecendo no dashboard." Cada caixa tem altura fixa (220 px): com
+// mais nomes do que cabem, os de baixo ficavam escondidos, e na TV, sem mouse, ninguém rola.
+// Agora a caixa cheia espera 4 s no topo, desce devagar (20 px por segundo), espera 3 s no fim
+// e volta ao topo. A caixa que cabe inteira fica parada. Quem tocar ou rolar a caixa (celular,
+// computador) tem 10 s de sossego antes de ela voltar a andar. O contador da caixa não muda.
+const ROLA = { passo: 1, intervaloMs: 50, esperaTopoMs: 4000, esperaFundoMs: 3000, pausaToqueMs: 10000 };
+function rolarCaixas(agora) {
+  agora = agora || Date.now();
+  document.querySelectorAll('.block-body').forEach(el => {
+    if (!el.offsetParent) return;                                   // aba escondida
+    const sobra = el.scrollHeight - el.clientHeight;
+    if (sobra <= 2) {                                               // cabe inteira: parada no topo
+      if (el.scrollTop) el.scrollTop = 0;
+      delete el.dataset.rola; delete el.dataset.rolaDesde;
+      return;
+    }
+    if (el.dataset.toque && agora - Number(el.dataset.toque) < ROLA.pausaToqueMs) return;
+    const fase = el.dataset.rola || 'topo';
+    const desde = Number(el.dataset.rolaDesde || 0);
+    if (!desde) { el.dataset.rola = 'topo'; el.dataset.rolaDesde = String(agora); return; }
+    if (fase === 'topo') {
+      if (agora - desde >= ROLA.esperaTopoMs) { el.dataset.rola = 'desce'; el.dataset.rolaDesde = String(agora); }
+      return;
+    }
+    if (fase === 'desce') {
+      el.scrollTop = Math.min(sobra, el.scrollTop + ROLA.passo);
+      // a meio pixel do fim (tela com zoom) já é o fim: encosta e espera
+      if (el.scrollTop >= sobra - 1) { el.scrollTop = sobra; el.dataset.rola = 'fundo'; el.dataset.rolaDesde = String(agora); }
+      return;
+    }
+    if (fase === 'fundo' && agora - desde >= ROLA.esperaFundoMs) {
+      if (typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'smooth' }); else el.scrollTop = 0;
+      el.dataset.rola = 'topo'; el.dataset.rolaDesde = String(agora);
+    }
+  });
+}
+function marcarToqueCaixa(ev) {
+  const el = (ev && ev.target && typeof ev.target.closest === 'function') ? ev.target.closest('.block-body') : null;
+  if (el) el.dataset.toque = String(Date.now());
 }
 
 // ════════════════════════════════════════════════════════════

@@ -232,6 +232,53 @@ function run() {
   }
   console.log('');
 
+  console.log('A caixa cheia rola sozinha (01-02/out/2026 — na TV ninguém rola com o dedo):');
+  {
+    const ctx = createContext();
+    const caixa = (alto, cabe, visivel) => ({ scrollHeight: alto, clientHeight: cabe, scrollTop: 0, dataset: {}, offsetParent: visivel === false ? null : {} });
+    const cheia = caixa(500, 220), cabe = caixa(200, 220), escondida = caixa(500, 220, false), tocada = caixa(500, 220);
+    ctx.document.querySelectorAll = (sel) => sel === '.block-body' ? [cheia, cabe, escondida] : [];
+    const rolar = (t) => vm.runInContext('rolarCaixas(' + t + ')', ctx);
+    const T0 = 1000000;
+    rolar(T0);
+    check('no começo, a cheia espera no topo', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    rolar(T0 + 3999);
+    check('antes de 4 s, não anda', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    rolar(T0 + 4000);
+    check('com 4 s, começa a descer', cheia.dataset.rola === 'desce');
+    let t = T0 + 4000;
+    for (let i = 0; i < 100; i++) { t += 50; rolar(t); }
+    check('desce 1 px a cada volta (20 px por segundo)', cheia.scrollTop === 100, String(cheia.scrollTop));
+    for (let i = 0; i < 400 && cheia.dataset.rola === 'desce'; i++) { t += 50; rolar(t); }
+    check('chega ao fim da lista (os nomes de baixo aparecem)', cheia.scrollTop === 280 && cheia.dataset.rola === 'fundo', cheia.scrollTop + ' ' + cheia.dataset.rola);
+    rolar(t + 2999);
+    check('espera 3 s no fim', cheia.scrollTop === 280);
+    rolar(t + 3000);
+    check('e volta ao topo', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    check('a caixa que cabe inteira fica parada', cabe.scrollTop === 0 && !cabe.dataset.rola);
+    check('a caixa escondida (outra aba) não é mexida', escondida.scrollTop === 0 && !escondida.dataset.rola);
+    // quem tocou na caixa (celular, computador) tem 10 s de sossego
+    ctx.document.querySelectorAll = () => [tocada];
+    tocada.dataset.toque = String(T0);
+    rolar(T0); rolar(T0 + 9999);
+    check('quem tocou tem 10 s de sossego', tocada.scrollTop === 0 && !tocada.dataset.rola);
+    rolar(T0 + 10000);
+    check('passados 10 s do toque, ela volta a andar', tocada.dataset.rola === 'topo');
+    // a caixa que estava rolada e passou a caber (o nome saiu da planilha) volta ao topo
+    const encolheu = caixa(500, 220); encolheu.scrollTop = 120; encolheu.dataset.rola = 'desce'; encolheu.dataset.rolaDesde = String(T0);
+    ctx.document.querySelectorAll = () => [encolheu];
+    encolheu.scrollHeight = 210; rolar(T0 + 50);
+    check('caixa que passou a caber volta ao topo e para', encolheu.scrollTop === 0 && !encolheu.dataset.rola);
+    // o toque marca a caixa certa
+    const alvo = caixa(500, 220);
+    vm.runInContext('marcarToqueCaixa', ctx)({ target: { closest: (sel) => sel === '.block-body' ? alvo : null } });
+    check('tocar numa caixa marca a pausa dela', !!alvo.dataset.toque);
+    check('o relógio da rolagem está ligado no init (a cada 50 ms) e ouve o toque',
+      /setInterval\(rolarCaixas, ROLA\.intervaloMs\);/.test(html) && /\['wheel', 'touchstart', 'pointerdown'\]\.forEach\(t => document\.addEventListener\(t, marcarToqueCaixa/.test(html));
+    check('a caixa continua com altura fixa (a TV não cresce para fora da tela)', /\.block-body  \{ padding:6px 12px; display:flex; flex-direction:column; overflow-y:auto; max-height:220px; \}/.test(html));
+  }
+  console.log('');
+
   console.log('== Resultado: ' + pass + ' ok, ' + fail + ' falha(s) ==');
   if (fail) { console.log('\nFalhas:'); fails.forEach((f) => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
