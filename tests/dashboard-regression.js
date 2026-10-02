@@ -301,6 +301,10 @@ function run() {
     // alguém rolou com a mão no meio da descida: ela segue dali, não volta
     lenta.scrollTop = 200; rolar(T0 + 4000 + 4000 + 60000 + 50);
     check('rolou com a mão: segue de onde a mão deixou', Math.abs(lenta.scrollTop - 201) < 0.001, String(lenta.scrollTop));
+    // a hora da TV voltou 10 minutos (acerto do relógio) no meio da descida: a caixa não salta para trás
+    const antesVolta = lenta.scrollTop;
+    rolar(T0 + 4000 + 4000 + 60000 + 50 - 600000);
+    check('a hora da TV voltando para trás não faz a caixa subir', lenta.scrollTop >= antesVolta, antesVolta + ' -> ' + lenta.scrollTop);
 
     // QA69: com zoom, o navegador arredonda o scrollTop (aqui, de 1/3 em 1/3 px, e o máximo é
     // sobra − 0,33). A caixa tem de chegar ao fim, sem travar.
