@@ -1341,6 +1341,9 @@ function init() {
   setInterval(updateClock, 1000);
   setInterval(tick, 1000);
   setInterval(checkAlarm, 10000);
+  // A caixa cheia rola sozinha (01-02/out/2026): na TV ninguém rola com o dedo.
+  setInterval(rolarCaixas, ROLA.intervaloMs);
+  ['wheel', 'touchstart', 'pointerdown'].forEach(t => document.addEventListener(t, marcarToqueCaixa, { passive: true }));
   updateDateLabel();
   switchTab('rotinas');
   loadData();
@@ -1780,6 +1783,68 @@ function buildBlock(b, entries, todo) {
       </div>
       <div class="block-body">${body}</div>
     </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  A CAIXA CHEIA ROLA SOZINHA (Adriana, 01-02/out/2026)
+// ════════════════════════════════════════════════════════════
+// "O banho dela não está aparecendo no dashboard." Cada caixa tem altura fixa (220 px): com
+// mais nomes do que cabem, os de baixo ficavam escondidos, e na TV, sem mouse, ninguém rola.
+// Agora a caixa cheia espera 4 s no topo, desce devagar (20 px por segundo), espera 3 s no fim
+// e volta ao topo. A caixa que cabe inteira fica parada. Quem tocar ou rolar a caixa (celular,
+// computador) tem 10 s de sossego antes de ela voltar a andar. O contador da caixa não muda.
+// A descida anda pelo RELÓGIO, não pelo número de voltas (QA69): numa TV lenta as voltas
+// atrasam, e a "1 px por volta" a caixa chegou a descer 3 px por segundo. A posição fica
+// guardada com casas decimais (rolaPos): com zoom, o navegador arredonda o scrollTop, e o
+// "+1" lido de volta virava 0 — a caixa parava para sempre.
+const ROLA = { pxPorSegundo: 20, intervaloMs: 50, esperaTopoMs: 4000, esperaFundoMs: 3000, pausaToqueMs: 10000,
+               voltaMaxMs: 1000,   // aba que dormiu: no máximo 1 s de caminho por volta, sem salto
+               maoPx: 5 };         // o scrollTop longe da posição guardada = alguém rolou com a mão
+function rolarCaixas(agora) {
+  agora = agora || Date.now();
+  document.querySelectorAll('.block-body').forEach(el => {
+    if (!el.offsetParent) return;                                   // aba escondida
+    const sobra = el.scrollHeight - el.clientHeight;
+    if (sobra <= 2) {                                               // cabe inteira: parada no topo
+      if (el.scrollTop) el.scrollTop = 0;
+      delete el.dataset.rola; delete el.dataset.rolaDesde; delete el.dataset.rolaPos; delete el.dataset.rolaUlt;
+      return;
+    }
+    if (el.dataset.toque && agora - Number(el.dataset.toque) < ROLA.pausaToqueMs) return;
+    const fase = el.dataset.rola || 'topo';
+    const desde = Number(el.dataset.rolaDesde || 0);
+    if (!desde) { el.dataset.rola = 'topo'; el.dataset.rolaDesde = String(agora); return; }
+    if (fase === 'topo') {
+      if (agora - desde >= ROLA.esperaTopoMs) {
+        el.dataset.rola = 'desce'; el.dataset.rolaDesde = String(agora);
+        el.dataset.rolaPos = String(el.scrollTop || 0); el.dataset.rolaUlt = String(agora);
+      }
+      return;
+    }
+    if (fase === 'desce') {
+      let pos = Number(el.dataset.rolaPos || 0);
+      if (Math.abs((el.scrollTop || 0) - pos) > ROLA.maoPx) pos = el.scrollTop || 0;   // rolou com a mão: segue dali
+      const ult = Number(el.dataset.rolaUlt || agora);
+      const dt = Math.max(0, Math.min(ROLA.voltaMaxMs, agora - ult));
+      pos = Math.min(sobra, pos + dt * ROLA.pxPorSegundo / 1000);
+      el.dataset.rolaPos = String(pos); el.dataset.rolaUlt = String(agora);
+      el.scrollTop = pos;
+      // a menos de 1 px do fim (tela com zoom) já é o fim: encosta e espera
+      if (pos >= sobra - 1) { el.scrollTop = sobra; el.dataset.rola = 'fundo'; el.dataset.rolaDesde = String(agora); }
+      return;
+    }
+    if (fase === 'fundo' && agora - desde >= ROLA.esperaFundoMs) {
+      if (typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'smooth' }); else el.scrollTop = 0;
+      el.dataset.rola = 'topo'; el.dataset.rolaDesde = String(agora); delete el.dataset.rolaPos; delete el.dataset.rolaUlt;
+    }
+  });
+}
+function marcarToqueCaixa(ev) {
+  // O toque pode chegar num pedaço de texto (navegador antigo): vale o elemento em volta.
+  const t = ev && ev.target;
+  const alvo = (t && t.nodeType === 3) ? t.parentElement : t;
+  const el = (alvo && typeof alvo.closest === 'function') ? alvo.closest('.block-body') : null;
+  if (el) el.dataset.toque = String(Date.now());
 }
 
 // ════════════════════════════════════════════════════════════

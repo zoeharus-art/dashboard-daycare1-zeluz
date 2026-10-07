@@ -232,6 +232,116 @@ function run() {
   }
   console.log('');
 
+  console.log('A caixa cheia rola sozinha (01-02/out/2026 — na TV ninguém rola com o dedo):');
+  {
+    const ctx = createContext();
+    // scrollTo de verdade (o navegador usa este caminho, não o scrollTop = 0 do fallback — QA69)
+    const caixa = (alto, cabe, visivel) => ({ scrollHeight: alto, clientHeight: cabe, scrollTop: 0, dataset: {}, offsetParent: visivel === false ? null : {},
+      scrollTo(o) { this.scrollTop = o.top; this.ultimoScrollTo = o; } });
+    const cheia = caixa(500, 220), cabe = caixa(200, 220), escondida = caixa(500, 220, false), tocada = caixa(500, 220);
+    ctx.document.querySelectorAll = (sel) => sel === '.block-body' ? [cheia, cabe, escondida] : [];
+    const rolar = (t) => vm.runInContext('rolarCaixas(' + t + ')', ctx);
+    const T0 = 1000000;
+    rolar(T0);
+    check('no começo, a cheia espera no topo', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    rolar(T0 + 3999);
+    check('antes de 4 s, não anda', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    rolar(T0 + 4000);
+    check('com 4 s, começa a descer', cheia.dataset.rola === 'desce');
+    let t = T0 + 4000;
+    for (let i = 0; i < 100; i++) { t += 50; rolar(t); }
+    check('desce 1 px a cada volta (20 px por segundo)', cheia.scrollTop === 100, String(cheia.scrollTop));
+    for (let i = 0; i < 400 && cheia.dataset.rola === 'desce'; i++) { t += 50; rolar(t); }
+    check('chega ao fim da lista (os nomes de baixo aparecem)', cheia.scrollTop === 280 && cheia.dataset.rola === 'fundo', cheia.scrollTop + ' ' + cheia.dataset.rola);
+    rolar(t + 2999);
+    check('espera 3 s no fim', cheia.scrollTop === 280);
+    rolar(t + 3000);
+    check('e volta ao topo', cheia.scrollTop === 0 && cheia.dataset.rola === 'topo');
+    check('a volta ao topo é pelo scrollTo, suave, até o 0', !!cheia.ultimoScrollTo && cheia.ultimoScrollTo.top === 0 && cheia.ultimoScrollTo.behavior === 'smooth',
+      JSON.stringify(cheia.ultimoScrollTo));
+    check('a caixa que cabe inteira fica parada', cabe.scrollTop === 0 && !cabe.dataset.rola);
+    check('a caixa escondida (outra aba) não é mexida', escondida.scrollTop === 0 && !escondida.dataset.rola);
+    // quem tocou na caixa (celular, computador) tem 10 s de sossego
+    ctx.document.querySelectorAll = () => [tocada];
+    tocada.dataset.toque = String(T0);
+    rolar(T0); rolar(T0 + 9999);
+    check('quem tocou tem 10 s de sossego', tocada.scrollTop === 0 && !tocada.dataset.rola);
+    rolar(T0 + 10000);
+    check('passados 10 s do toque, ela volta a andar', tocada.dataset.rola === 'topo');
+    // a caixa que estava rolada e passou a caber (o nome saiu da planilha) volta ao topo
+    const encolheu = caixa(500, 220); encolheu.scrollTop = 120; encolheu.dataset.rola = 'desce'; encolheu.dataset.rolaDesde = String(T0);
+    ctx.document.querySelectorAll = () => [encolheu];
+    encolheu.scrollHeight = 210; rolar(T0 + 50);
+    check('caixa que passou a caber volta ao topo e para', encolheu.scrollTop === 0 && !encolheu.dataset.rola);
+    // o toque marca a caixa certa
+    const alvo = caixa(500, 220);
+    vm.runInContext('marcarToqueCaixa', ctx)({ target: { closest: (sel) => sel === '.block-body' ? alvo : null } });
+    check('tocar numa caixa marca a pausa dela', !!alvo.dataset.toque);
+    const alvoTexto = caixa(500, 220);
+    vm.runInContext('marcarToqueCaixa', ctx)({ target: { nodeType: 3, parentElement: { closest: (sel) => sel === '.block-body' ? alvoTexto : null } } });
+    check('o toque que chega num pedaço de texto também pausa a caixa', !!alvoTexto.dataset.toque);
+
+    // QA69: pouca sobra também rola (3 px e 39 px: um nome cortado pela metade)
+    const s3 = caixa(223, 220), s39 = caixa(259, 220);
+    ctx.document.querySelectorAll = () => [s3, s39];
+    rolar(T0); rolar(T0 + 4000);
+    check('sobra de 3 px e de 39 px também rola', s3.dataset.rola === 'desce' && s39.dataset.rola === 'desce', s3.dataset.rola + ' ' + s39.dataset.rola);
+    for (let i = 1; i <= 60; i++) rolar(T0 + 4000 + i * 50);
+    check('e as duas chegam ao fim', s3.dataset.rola === 'fundo' && s3.scrollTop === 3 && s39.dataset.rola === 'fundo' && s39.scrollTop === 39, s3.scrollTop + ' ' + s39.scrollTop);
+
+    // QA69: a velocidade é do relógio — TV lenta (uma volta a cada 400 ms) desce os mesmos 20 px/s
+    const lenta = caixa(500, 220);
+    ctx.document.querySelectorAll = () => [lenta];
+    rolar(T0); rolar(T0 + 4000);
+    for (let i = 1; i <= 10; i++) rolar(T0 + 4000 + i * 400);
+    check('TV lenta: em 4 s desce 80 px (20 por segundo), não 10', Math.abs(lenta.scrollTop - 80) < 0.001, String(lenta.scrollTop));
+    // aba que dormiu 60 s: no máximo 1 s de caminho (20 px), sem salto
+    rolar(T0 + 4000 + 4000 + 60000);
+    check('depois de 60 s parada, anda no máximo 20 px de uma vez', Math.abs(lenta.scrollTop - 100) < 0.001, String(lenta.scrollTop));
+    // alguém rolou com a mão no meio da descida: ela segue dali, não volta
+    lenta.scrollTop = 200; rolar(T0 + 4000 + 4000 + 60000 + 50);
+    check('rolou com a mão: segue de onde a mão deixou', Math.abs(lenta.scrollTop - 201) < 0.001, String(lenta.scrollTop));
+    // a hora da TV voltou 10 minutos (acerto do relógio) no meio da descida: a caixa não salta para trás
+    const antesVolta = lenta.scrollTop;
+    rolar(T0 + 4000 + 4000 + 60000 + 50 - 600000);
+    check('a hora da TV voltando para trás não faz a caixa subir', lenta.scrollTop >= antesVolta, antesVolta + ' -> ' + lenta.scrollTop);
+
+    // QA69: com zoom, o navegador arredonda o scrollTop (aqui, de 1/3 em 1/3 px, e o máximo é
+    // sobra − 0,33). A caixa tem de chegar ao fim, sem travar.
+    const zoom = { scrollHeight: 333, clientHeight: 220, dataset: {}, offsetParent: {}, _st: 0,
+      get scrollTop() { return this._st; },
+      set scrollTop(v) { this._st = Math.min(Math.round(v * 3) / 3, 113 - 0.33); },
+      scrollTo(o) { this.scrollTop = o.top; } };
+    const zoomFino = { scrollHeight: 333, clientHeight: 220, dataset: {}, offsetParent: {}, _st: 0,   // zoom 0,3: de 3,33 em 3,33 px
+      get scrollTop() { return this._st; },
+      set scrollTop(v) { this._st = Math.min(Math.floor(v / 3.333) * 3.333, 113); },
+      scrollTo(o) { this.scrollTop = o.top; } };
+    ctx.document.querySelectorAll = () => [zoom, zoomFino];
+    rolar(T0); rolar(T0 + 4000);
+    for (let i = 1; i <= 200 && (zoom.dataset.rola !== 'fundo' || zoomFino.dataset.rola !== 'fundo'); i++) rolar(T0 + 4000 + i * 50);
+    check('com zoom (scrollTop arredondado), a caixa chega ao fim', zoom.dataset.rola === 'fundo' && zoomFino.dataset.rola === 'fundo',
+      zoom.dataset.rola + ' ' + zoom.scrollTop + ' / ' + zoomFino.dataset.rola + ' ' + zoomFino.scrollTop);
+
+    // QA69: o init de verdade liga o relógio e os três ouvintes (não basta o texto da fonte)
+    const ctxInit = createContext();
+    const relogios = [], ouvintes = [];
+    ctxInit.setInterval = (fn, ms) => { relogios.push({ fn, ms }); return relogios.length; };
+    ctxInit.document.addEventListener = (tipo, fn, op) => ouvintes.push({ tipo, fn, op });
+    vm.runInContext('setFraseDia=function(){}; syncInternetTime=function(){}; updateClock=function(){}; updateDateLabel=function(){}; switchTab=function(){}; loadData=function(){};', ctxInit);
+    vm.runInContext('init()', ctxInit);
+    const rc = vm.runInContext('rolarCaixas', ctxInit), mt = vm.runInContext('marcarToqueCaixa', ctxInit);
+    check('o init liga o relógio da rolagem a cada 50 ms', relogios.some((r) => r.fn === rc && r.ms === 50), JSON.stringify(relogios.map((r) => r.ms)));
+    check('e ouve roda do mouse, toque e clique, sem travar a rolagem da página (passive)',
+      ['wheel', 'touchstart', 'pointerdown'].every((t) => ouvintes.some((o) => o.tipo === t && o.fn === mt && o.op && o.op.passive === true)),
+      JSON.stringify(ouvintes.map((o) => o.tipo)));
+    check('20 px por segundo, com uma volta a cada 50 ms',
+      vm.runInContext('ROLA.pxPorSegundo', ctx) === 20 && vm.runInContext('ROLA.intervaloMs', ctx) === 50);
+    check('a caixa continua com altura fixa (a TV não cresce para fora da tela)', /\.block-body  \{ padding:6px 12px; display:flex; flex-direction:column; overflow-y:auto; max-height:220px; \}/.test(html));
+    const celular = (html.match(/@media \(max-width: 600px\) \{([\s\S]*?)\n    \}/) || [])[1] || '';
+    check('no celular, a caixa tem 200 px (dentro do @media de 600 px)', /\.block-body  \{ max-height: 200px; \}/.test(celular));
+  }
+  console.log('');
+
   console.log('== Resultado: ' + pass + ' ok, ' + fail + ' falha(s) ==');
   if (fail) { console.log('\nFalhas:'); fails.forEach((f) => console.log('  - ' + f)); }
   process.exit(fail ? 1 : 0);
