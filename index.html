@@ -749,7 +749,8 @@
       .footer { padding: 8px 12px; }
       .footer-txt, .footer-brand { font-size: 10px; }
     }
-  </style>
+      .tv-saidas-card{margin:0 0 14px}.tv-saidas-itens{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:7px;padding:9px 12px;background:#fff}.tv-saidas-item{min-width:0;padding:7px 9px;border:1px solid rgba(184,139,10,.25);border-radius:9px;color:var(--azul);line-height:1.2}.tv-saidas-item strong,.tv-saidas-item span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tv-saidas-item span{font-size:11px;margin-top:2px;color:#8a6d10}
+</style>
 </head>
 <body>
 
@@ -830,6 +831,8 @@
     <button class="btn-tentar" onclick="manualRefresh()">🔄 Tentar novamente</button>
   </div>
 
+  <div id="tv-saidas-root" aria-live="polite"></div>
+
   <div id="content" style="display:none">
     <div class="cache-banner" id="cache-banner">
       📡 Sem internet — dados salvos localmente (<span id="cache-time">—</span>)
@@ -865,6 +868,19 @@
 const SHEET_ID   = '1sYJfssdMiUGkyeUX2EUUVpSjpE80kETDT6Gktnqd9kA';
 const REFRESH_OK = 120;
 const REFRESH_ER = 30;
+const TV_SAIDAS_ABA="TV Saídas Hoje", TV_SAIDAS_VALIDADE_MS=10*60*1000;
+
+// TV56: esta leitura não usa o cache de 24h do dashboard.
+let tvSaidas={estado:'pendente',dia:'',geradoEm:0,saidas:[]},tvSaidasAss='';
+function tvIso(d){const p=x=>String(x).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function tvHoje(){const d=getBrasiliaDate();return tvIso(new Date(d.getFullYear(),d.getMonth(),d.getDate()));}
+function tvBr(iso){const a=String(iso||'').split('-');return a.length===3?a[2]+'/'+a[1]:'';}
+function tvEsc(v){return String(v==null?'':v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function tvSaidasValidar(rows,dia,agora){if(!Array.isArray(rows)||!rows.length)return {estado:'indisponivel',dia,saidas:[]};const r=rows[0]||{},g=Date.parse(String(r.geradoEm||'')),n=agora==null?Date.now():agora;if(r.versao!=='1'||r.dia!==dia||r.estado!=='pronto'||!Number.isFinite(g)||n-g>TV_SAIDAS_VALIDADE_MS||g-n>60000)return {estado:'desatualizado',dia,saidas:[]};const saidas=[];for(const x of rows){if(x.dia!==dia||x.estado!=='pronto'||x.geradoEm!==r.geradoEm)return {estado:'indisponivel',dia,saidas:[]};const nome=String(x.nome||'').trim(),tipo=String(x.tipo||''),etapa=String(x.etapa||'');if(!nome)continue;if(!['Hóspede','Pernoite'].includes(tipo)||!['A preparar','Na recepção'].includes(etapa))return {estado:'indisponivel',dia,saidas:[]};saidas.push({nome,tipo,etapa});}return {estado:'pronto',dia,geradoEm:g,saidas};}
+async function tvSaidasCarregar(){const dia=tvHoje();try{tvSaidas=tvSaidasValidar(await fetchSheet(TV_SAIDAS_ABA,{headers:1}),dia);}catch(_){tvSaidas={estado:'indisponivel',dia,saidas:[]};}tvSaidasAss='';}
+function tvSaidasAtual(){const x=tvSaidas||{};if(x.estado!=='pronto')return {estado:x.estado||'indisponivel',dia:x.dia||tvHoje(),saidas:[]};if(x.dia!==tvHoje()||!Number.isFinite(x.geradoEm)||Date.now()-x.geradoEm>TV_SAIDAS_VALIDADE_MS)return {estado:'desatualizado',dia:tvHoje(),saidas:[]};return x;}
+function tvSaidasRender(){const el=document.getElementById('tv-saidas-root');if(!el)return;const x=tvSaidasAtual(),a=x.saidas||[],ass=x.estado+'|'+x.dia+'|'+a.map(v=>v.nome+'|'+v.tipo+'|'+v.etapa).join(';');if(ass===tvSaidasAss)return;tvSaidasAss=ass;const titulo='Quem vai embora hoje'+(x.dia?' · '+tvBr(x.dia):''),corpo=x.estado==='pronto'?(a.length?a.map(v=>'<div class="tv-saidas-item"><strong>'+tvEsc(v.nome)+'</strong><span>'+tvEsc(v.tipo)+' · '+tvEsc(v.etapa)+'</span></div>').join(''):'<div class="block-empty">Nenhuma saída formal hoje</div>'):'<div class="block-empty">Saídas de Hotel indisponíveis — confirme no Hotel</div>';el.innerHTML='<section class="block amarelo tv-saidas-card"><div class="block-header"><span class="block-icon">🏨</span><span class="block-title">'+titulo+'</span><span class="block-count">'+(x.estado==='pronto'?(a.length||''):'')+'</span></div><div class="tv-saidas-itens">'+corpo+'</div></section>';}
+
 const CACHE_KEY  = 'zeluz_dc_v3';
 const TODO_KEY   = 'zeluz_todo_v1';
 const ALARM_KEY  = 'zeluz_alarm_v1';
@@ -1435,7 +1451,7 @@ function updateDateLabel() {
 // ════════════════════════════════════════════════════════════
 //  TICK (countdown)
 // ════════════════════════════════════════════════════════════
-function tick() {
+function tick() { try{tvSaidasRender();}catch(_){}
   countdown--;
   if (countdown<=0) { countdown=status==='erro'?REFRESH_ER:REFRESH_OK; loadData(); }
   const el=document.getElementById('status-timer');
@@ -1471,6 +1487,8 @@ async function loadData() {
     }
   }
 
+  await tvSaidasCarregar();
+  tvSaidasRender();
   loading=false; setBtn(true);
   if(anyOk&&!anyErr){
     status='ok'; lastOk=new Date(); countdown=REFRESH_OK;
@@ -1499,7 +1517,7 @@ function manualRefresh() {
 // ════════════════════════════════════════════════════════════
 //  JSONP
 // ════════════════════════════════════════════════════════════
-function fetchSheet(name) {
+function fetchSheet(name,opts) {
   return new Promise((resolve,reject)=>{
     const cb='zcb_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
     const sc=document.createElement('script');
@@ -1507,7 +1525,7 @@ function fetchSheet(name) {
     function cleanup(){ clearTimeout(timer); delete window[cb]; sc.parentNode&&sc.parentNode.removeChild(sc); }
     window[cb]=data=>{ cleanup(); if(data&&data.table) resolve(parseGviz(data.table)); else reject(new Error('Aba não encontrada: '+name)); };
     sc.onerror=()=>{ cleanup(); reject(new Error('Erro de rede: '+name)); };
-    sc.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=reqId:0;responseHandler:${cb}&sheet=${encodeURIComponent(name)}&t=${Date.now()}`;
+    sc.src=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=reqId:0;responseHandler:${cb}&sheet=${encodeURIComponent(name)}${opts&&opts.headers===1?"&headers=1":""}&t=${Date.now()}`;
     document.head.appendChild(sc);
   });
 }
@@ -1720,6 +1738,7 @@ function renderDay() {
   const dateStr=`${p(selectedDate.getDate())}/${p(selectedDate.getMonth()+1)}/${selectedDate.getFullYear()}`;
   const rows=all.filter(r=>(r['Data']||'').trim()===dateStr);
   const todo=getTodo();
+  tvSaidasRender();
 
   // ─── ABA: ROTINAS AMIGOS ───────────────────────────────
   document.getElementById('blocks-grid').innerHTML =
